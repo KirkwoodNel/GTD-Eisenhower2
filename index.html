@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edit & Stage — Smart GTD × Eisenhower To-Do</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
+  :root{
+    --q1:#ff6b6b; --q2:#4ecdc4; --q3:#ffe066; --q4:#95a5a6;
+    --gtd-inbox:#9b59b6; --gtd-next:#27ae60; --gtd-wait:#3498db;
+    --gtd-someday:#95a5a6; --gtd-done:#2ecc71;
+    --bg:#f8f9fa; --card:#fff; --text:#2d3436; --muted:#636e72;
+    --shadow:0 4px 20px rgba(0,0,0,.08); --radius:14px;
+    --done:#b2bec3; --score-high:#e74c3c; --score-med:#f39c12; --score-low:#27ae60;
+  }
+  body{background:linear-gradient(135deg,#e3f2fd,#f3e5f5);min-height:100vh;padding:16px}
+  .container{max-width:1200px;margin:0 auto}
+  h1{text-align:center;color:#2d3436;margin-bottom:8px;font-size:1.7rem}
+  .subtitle{text-align:center;color:#636e72;margin-bottom:20px;font-size:0.9rem}
+
+  .recommend{background:linear-gradient(135deg,#fff9c4,#fff3e0);border-left:5px solid #ff9800;padding:18px;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:20px}
+  .recommend h2{font-size:1.1rem;color:#e65100;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .top-task{background:#fff;padding:12px;border-radius:10px;margin-bottom:8px;border-left:4px solid var(--score-high)}
+  .score-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-weight:700;font-size:0.8rem;margin-left:8px;color:#fff}
+  .score-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+  .score-item{display:flex;align-items:center;justify-content:space-between;background:#fff;padding:8px 12px;border-radius:8px}
+  .score-value{font-weight:700;font-size:1rem}
+  .score-high{color:var(--score-high)}
+  .score-med{color:var(--score-med)}
+  .score-low{color:var(--score-low)}
+
+  .form-container{background:var(--card);padding:20px;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:20px}
+  .form-title{font-size:1rem;margin-bottom:14px;color:#555;display:flex;justify-content:space-between;align-items:center}
+  .edit-indicator{background:#6c5ce7;color:#fff;padding:4px 10px;border-radius:20px;font-size:0.75rem}
+  .cancel-btn{background:none;border:none;color:#e17055;cursor:pointer;font-size:0.9rem}
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+  .form-group{display:flex;flex-direction:column;gap:4px}
+  label{font-size:0.8rem;font-weight:600;color:#444;margin-left:2px}
+  input,select,button{padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px}
+  button{border:none;cursor:pointer;font-weight:600;transition:.2s}
+  .btn-primary{background:linear-gradient(135deg,#6c5ce7,#a29bfe);color:#fff;margin-top:8px}
+  .btn-primary:hover{transform:translateY(-1px)}
+  .btn-reset{background:#e0e0e0;color:#555;margin-top:8px}
+
+  .section-title{font-size:1rem;margin:20px 0 10px;color:#555}
+  .gtd-row,.matrix-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:12px}
+  .gtd-column,.quadrant{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+  .gtd-header,.q-header{padding:10px 14px;font-weight:700;color:#fff;font-size:0.9rem}
+  .gtd-inbox .gtd-header{background:var(--gtd-inbox)}
+  .gtd-next .gtd-header{background:var(--gtd-next)}
+  .gtd-wait .gtd-header{background:var(--gtd-wait)}
+  .gtd-someday .gtd-header{background:var(--gtd-someday)}
+  .q1 .q-header{background:var(--q1)}
+  .q2 .q-header{background:var(--q2)}
+  .q3 .q-header{background:var(--q3);color:#2d3436}
+  .q4 .q-header{background:var(--q4)}
+  .q-desc{font-size:.7rem;opacity:.9;font-weight:400;margin-top:2px}
+
+  .task-list{padding:12px;min-height:60px}
+  .task{padding:10px;border-radius:8px;background:#f8f9fa;margin-bottom:8px;transition:.2s;border-left:4px solid #ddd;cursor:pointer}
+  .task:active{transform:scale(0.98)}
+  .task.q1{border-left-color:var(--q1)}
+  .task.q2{border-left-color:var(--q2)}
+  .task.q3{border-left-color:var(--q3)}
+  .task.q4{border-left-color:var(--q4)}
+  .task.completed{opacity:.6;border-left-color:var(--done)}
+  .task.completed .task-text{text-decoration:line-through;color:var(--done)}
+  .task-row{display:flex;align-items:flex-start;gap:8px}
+  .checkbox{width:22px;height:22px;border-radius:6px;border:2px solid #ccc;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-top:2px;flex-shrink:0;transition:.2s}
+  .checkbox.checked{background:#2ecc71;border-color:#2ecc71;color:#fff}
+  .task-text{flex:1}
+  .task-title{font-weight:600;margin-bottom:2px;font-size:0.9rem}
+  .task-meta{font-size:.7rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px;margin-top:3px}
+  .meta-tag{display:inline-flex;align-items:center;gap:2px;padding:2px 5px;border-radius:4px;background:#e9ecef;font-size:0.65rem}
+
+  .task-actions{display:flex;flex-direction:column;gap:4px;margin-left:auto}
+  .move-row{display:flex;gap:3px}
+  .move-btn{padding:3px 5px;font-size:0.65rem;border-radius:4px;background:#e9ecef;color:#555;line-height:1}
+  .move-btn:hover{background:#d5d9dc}
+  .delete-btn{background:none;border:none;color:#e17055;cursor:pointer;font-size:0.9rem;padding:2px;margin-left:auto}
+  .empty{text-align:center;color:#b2bec3;padding:16px;font-style:italic;font-size:0.85rem}
+
+  @media(max-width:600px){
+    .gtd-row,.matrix-row{grid-template-columns:1fr}
+    .task-actions{flex-direction:row;margin-top:4px;width:100%;justify-content:space-between}
+    .task-row{flex-wrap:wrap}
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>✏️ Edit & Stage — Smart GTD × Eisenhower</h1>
+  <p class="subtitle">Tap any task to edit · Move between sections instantly</p>
+
+  <div class="recommend">
+    <h2>🎯 What to Do Next — Smart Priority Ranking</h2>
+    <div id="recommendPanel"><p style="color:#666">Calculating priorities...</p></div>
+  </div>
+
+  <div class="form-container">
+    <div class="form-title">
+      <span id="formMode">➕ Add New Task</span>
+      <span id="editBadge" style="display:none" class="edit-indicator">✏️ Editing Task</span>
+      <button id="cancelEditBtn" style="display:none" class="cancel-btn" onclick="cancelEdit()">✕ Cancel</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group" style="grid-column: 1 / -1">
+        <label for="taskTitle">📝 Task / Action *</label>
+        <input type="text" id="taskTitle" placeholder="What needs to be done?" required>
+      </div>
+      <div class="form-group">
+        <label for="gtdStatus">📂 GTD Status</label>
+        <select id="gtdStatus">
+          <option value="inbox">📥 Inbox</option>
+          <option value="next">▶️ Next Action</option>
+          <option value="wait">⏳ Waiting For</option>
+          <option value="someday">💭 Someday/Maybe</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="priority">🎯 Eisenhower Priority</label>
+        <select id="priority">
+          <option value="q1">🔴 Q1 — Urgent & Important</option>
+          <option value="q2">🔵 Q2 — Not Urgent & Important</option>
+          <option value="q3">🟡 Q3 — Urgent & Not Important</option>
+          <option value="q4">⚪ Q4 — Not Urgent & Not Important</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="dueDate">📅 Due Date</label>
+        <input type="date" id="dueDate">
+      </div>
+      <div class="form-group">
+        <label for="dueTime">🕐 Due Time</label>
+        <input type="time" id="dueTime">
+      </div>
+      <div class="form-group">
+        <label for="reminderDate">🔔 Reminder Date</label>
+        <input type="date" id="reminderDate">
+      </div>
+      <div class="form-group">
+        <label for="reminderTime">⏰ Reminder Time</label>
+        <input type="time" id="reminderTime">
+      </div>
+      <div class="form-group">
+        <label for="context">📍 Context</label>
+        <input type="text" id="context" placeholder="@Computer, @Phone, @Home">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn-primary" id="saveBtn" onclick="saveTask()">💾 Save Task</button>
+      <button class="btn-reset" onclick="resetToDefaults()">↩️ Reset Examples</button>
+    </div>
+  </div>
+
+  <h3 class="section-title">📂 GTD Workflow — Stage tasks below</h3>
+  <div class="gtd-row">
+    <div class="gtd-column gtd-inbox">
+      <div class="gtd-header">📥 Inbox</div>
+      <div class="task-list" id="gtd-inbox"></div>
+    </div>
+    <div class="gtd-column gtd-next">
+      <div class="gtd-header">▶️ Next Actions</div>
+      <div class="task-list" id="gtd-next"></div>
+    </div>
+    <div class="gtd-column gtd-wait">
+      <div class="gtd-header">⏳ Waiting For</div>
+      <div class="task-list" id="gtd-wait"></div>
+    </div>
+    <div class="gtd-column gtd-someday">
+      <div class="gtd-header">💭 Someday/Maybe</div>
+      <div class="task-list" id="gtd-someday"></div>
+    </div>
+  </div>
+
+  <h3 class="section-title">🎯 Eisenhower Priority Matrix — Stage tasks below</h3>
+  <div class="matrix-row">
+    <div class="quadrant q1">
+      <div class="q-header">DO NOW<div class="q-desc">Urgent & Important</div></div>
+      <div class="task-list" id="list-q1"></div>
+    </div>
+    <div class="quadrant q2">
+      <div class="q-header">SCHEDULE<div class="q-desc">Not Urgent & Important</div></div>
+      <div class="task-list" id="list-q2"></div>
+    </div>
+    <div class="quadrant q3">
+      <div class="q-header">DELEGATE<div class="q-desc">Urgent & Not Important</div></div>
+      <div class="task-list" id="list-q3"></div>
+    </div>
+    <div class="quadrant q4">
+      <div class="q-header">ELIMINATE<div class="q-desc">Not Urgent & Not Important</div></div>
+      <div class="task-list" id="list-q4"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const EXAMPLE_TASKS = [
+  { id: 1, title: "Submit quarterly financial report", gtdStatus: "next", priority: "q1", dueDate: formatDateStr(1), dueTime: "17:00", reminderDate: formatDateStr(0), reminderTime: "09:00", context: "@Computer", completed: false },
+  { id: 2, title: "Finalise client contract proposal", gtdStatus: "next", priority: "q1", dueDate: formatDateStr(2), dueTime: "12:00", reminderDate: formatDateStr(1), reminderTime: "14:00", context: "@Computer", completed: false },
+  { id: 3, title: "Review Q4 strategic goals & plan", gtdStatus: "next", priority: "q2", dueDate: formatDateStr(7), dueTime: "", reminderDate: formatDateStr(5), reminderTime: "10:00", context: "@Meeting", completed: false },
+  { id: 4, title: "Reply to marketing agency email", gtdStatus: "inbox", priority: "q3", dueDate: formatDateStr(3), dueTime: "", reminderDate: "", reminderTime: "", context: "@Email", completed: false },
+  { id: 5, title: "Book team lunch venue", gtdStatus: "next", priority: "q3", dueDate: formatDateStr(4), dueTime: "", reminderDate: formatDateStr(2), reminderTime: "11:00", context: "@Phone", completed: false },
+  { id: 6, title: "Research new industry software", gtdStatus: "someday", priority: "q4", dueDate: "", dueTime: "", reminderDate: "", reminderTime: "", context: "@Computer", completed: false },
+  { id: 7, title: "Wait for vendor price quote", gtdStatus: "wait", priority: "q3", dueDate: formatDateStr(5), dueTime: "", reminderDate: formatDateStr(3), reminderTime: "15:00", context: "@Vendor", completed: false },
+  { id: 8, title: "Update professional portfolio website", gtdStatus: "someday", priority: "q2", dueDate: formatDateStr(21), dueTime: "", reminderDate: formatDateStr(14), reminderTime: "", context: "@Computer", completed: false }
+];
+
+function formatDateStr(daysAhead) {
+  const d = new Date(); d.setDate(d.getDate() + daysAhead);
+  return d.toISOString().split('T')[0];
+}
+
+function calculateUrgencyScore(task) {
+  let score = 0;
+  const priorityWeights = { q1: 40, q2: 25, q3: 15, q4: 5 };
+  score += priorityWeights[task.priority] || 0;
+  const gtdWeights = { next: 25, inbox: 15, wait: 10, someday: 0 };
+  score += gtdWeights[task.gtdStatus] || 0;
+  if (task.dueDate) {
+    const now = new Date(); now.setHours(0,0,0,0);
+    const due = new Date(task.dueDate + 'T00:00:00');
+    const daysUntilDue = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+    if (daysUntilDue <= 0) score += 25;
+    else if (daysUntilDue <= 1) score += 22;
+    else if (daysUntilDue <= 3) score += 18;
+    else if (daysUntilDue <= 7) score += 12;
+    else if (daysUntilDue <= 14) score += 6;
+    else score += 2;
+  }
+  if (task.dueTime) score += 5;
+  if (task.reminderDate || task.reminderTime) score += 5;
+  return Math.round(score);
+}
+
+let tasks = [];
+let editingId = null;
+
+function initTasks() {
+  const saved = localStorage.getItem('editStageTodo');
+  if (saved && JSON.parse(saved).length > 0) tasks = JSON.parse(saved);
+  else { tasks = [...EXAMPLE_TASKS]; saveTasks(); }
+}
+function saveTasks() { localStorage.setItem('editStageTodo', JSON.stringify(tasks)); }
+function resetToDefaults() {
+  if (confirm('Reset to example tasks? Your tasks will be replaced.')) {
+    tasks = EXAMPLE_TASKS.map(t => ({ ...t, id: Date.now() + Math.random() }));
+    saveTasks(); renderAll(); cancelEdit();
+  }
+}
+
+function editTask(id) {
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+  editingId = id;
+  document.getElementById('taskTitle').value = task.title;
+  document.getElementById('gtdStatus').value = task.gtdStatus;
+  document.getElementById('priority').value = task.priority;
+  document.getElementById('dueDate').value = task.dueDate || '';
+  document.getElementById('dueTime').value = task.dueTime || '';
+  document.getElementById('reminderDate').value = task.reminderDate || '';
+  document.getElementById('reminderTime').value = task.reminderTime || '';
+  document.getElementById('context').value = task.context || '';
+  document.getElementById('formMode').textContent = `✏️ Editing: "${task.title}"`;
+  document.getElementById('editBadge').style.display = 'inline';
+  document.getElementById('cancelEditBtn').style.display = 'inline';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cancelEdit() {
+  editingId = null;
+  document.getElementById('taskTitle').value = '';
+  document.getElementById('dueDate').value = '';
+  document.getElementById('dueTime').value = '';
+  document.getElementById('reminderDate').value = '';
+  document.getElementById('reminderTime').value = '';
+  document.getElementById('context').value = '';
+  document.getElementById('formMode').textContent = '➕ Add New Task';
+  document.getElementById('editBadge').style.display = 'none';
+  document.getElementById('cancelEditBtn').style.display = 'none';
+}
+
+function saveTask() {
+  const title = document.getElementById('taskTitle').value.trim();
+  if (!title) return alert('⚠️ Please enter a task!');
+  const taskData = {
+    title,
+    gtdStatus: document.getElementById('gtdStatus').value,
+    priority: document.getElementById('priority').value,
+    dueDate: document.getElementById('dueDate').value,
+    dueTime: document.getElementById('dueTime').value,
+    reminderDate: document.getElementById('reminderDate').value,
+    reminderTime: document.getElementById('reminderTime').value,
+    context: document.getElementById('context').value.trim()
+  };
+  if (editingId) {
+    const idx = tasks.findIndex(t => t.id === editingId);
+    if (idx !== -1) tasks[idx] = { ...tasks[idx], ...taskData };
+  } else {
+    tasks.unshift({ id: Date.now(), ...taskData, completed: false });
+  }
+  saveTasks(); renderAll(); cancelEdit();
+}
+
+function moveToGTD(id, newStatus) {
+  const task = tasks.find(t => t.id === id);
+  if (task) { task.gtdStatus = newStatus; saveTasks(); renderAll(); }
+}
+function moveToPriority(id, newPriority) {
+  const task = tasks.find(t => t.id === id);
+  if (task) { task.priority = newPriority; saveTasks(); renderAll(); }
+}
+
+function toggleComplete(id) {
+  const task = tasks.find(t => t.id === id);
+  if (task) { task.completed = !task.completed; saveTasks(); renderAll(); }
+}
+function deleteTask(id) {
+  if (confirm('Delete this task?')) { tasks = tasks.filter(t => t.id !== id); saveTasks(); renderAll(); }
+}
+function formatDateDisplay(d) {
+  if (!d) return '';
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+function getScoreClass(score) {
+  if (score >= 60) return 'score-high';
+  if (score >= 40) return 'score-med';
+  return 'score-low';
+}
+
+function renderRecommendations() {
+  const active = tasks.filter(t => !t.completed);
+  const scored = active.map(t => ({ ...t, score: calculateUrgencyScore(t) })).sort((a, b) => b.score - a.score);
+  const panel = document.getElementById('recommendPanel');
+  if (scored.length === 0) {
+    panel.innerHTML = '<p style="text-align:center;color:#27ae60;font-weight:600">🎉 All done! Add tasks above.</p>';
+    return;
+  }
+  const top = scored[0];
+  const scoreColor = top.score >= 60 ? 'var(--score-high)' : top.score >= 40 ? 'var(--score-med)' : 'var(--score-low)';
+  panel.innerHTML = `
+    <div class="top-task">
+      <strong style="font-size:1rem">🏆 #1 Recommended:</strong>
+      <div style="font-size:1rem;margin:6px 0;font-weight:600">${top.title}
+        <span class="score-badge" style="background:${scoreColor}">${top.score}/80</span>
+      </div>
+      <div style="font-size:0.8rem;color:#666">
+        ${top.context?`📍 ${top.context}`:''}
+        ${top.dueDate?` | 📅 Due: ${formatDateDisplay(top.dueDate)} ${top.dueTime||''}`:''}
+        <br><em>Priority: ${top.priority.toUpperCase()} · Status: ${top.gtdStatus} · <a href="#" onclick="editTask(${top.id});return false;">Edit</a></em>
+      </div>
+    </div>
+    <div style="margin-top:10px">
+      <strong>📊 Full Ranking:</strong>
+      <div class="score-list">
+        ${scored.slice(1,5).map((t,i) => `
+          <div class="score-item">
+            <span onclick="editTask(${t.id})" style="cursor:pointer">${i+2}. ${t.title}</span>
+            <span class="score-value ${getScoreClass(t.score)}">${t.score}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+    <p style="font-size:0.7rem;color:#888;margin-top:8px">
+      💡 <strong>Tap any task to edit it</strong> · Use small buttons on tasks to move between sections
+    </p>
+  `;
+}
+
+function taskHTML(task) {
+  const score = calculateUrgencyScore(task);
+  return `
+    <div class="task ${task.priority} ${task.completed?'completed':''}" onclick="editTask(${task.id})">
+      <div class="task-row">
+        <div class="checkbox ${task.completed?'checked':''}" onclick="event.stopPropagation();toggleComplete(${task.id})">
+          ${task.completed?'✓':''}
+        </div>
+        <div class="task-text">
+          <div class="task-title">${task.title}
+            <span style="font-size:0.65rem;opacity:0.5;margin-left:4px">${score}pts</span>
+          </div>
+          <div class="task-meta">
+            ${task.dueDate?`<span class="meta-tag">📅 ${formatDateDisplay(task.dueDate)} ${task.dueTime||''}</span>`:''}
+            ${task.context?`<span class="meta-tag">📍 ${task.context}</span>`:''}
+          </div>
+        </div>
+        <div class="task-actions" onclick="event.stopPropagation()">
+          <div class="move-row">
+            <button class="move-btn" title="Move to Inbox" onclick="moveToGTD(${task.id},'inbox')">📥</button>
+            <button class="move-btn" title="Move to Next" onclick="moveToGTD(${task.id},'next')">▶️</button>
+            <button class="move-btn" title="Move to Waiting" onclick="moveToGTD(${task.id},'wait')">⏳</button>
+            <button class="move-btn" title="Move to Someday" onclick="moveToGTD(${task.id},'someday')">💭</button>
+          </div>
+          <div class="move-row">
+            <button class="move-btn" title="Q1 Do Now" onclick="moveToPriority(${task.id},'q1')">🔴</button>
+            <button class="move-btn" title="Q2 Schedule" onclick="moveToPriority(${task.id},'q2')">🔵</button>
+            <button class="move-btn" title="Q3 Delegate" onclick="moveToPriority(${task.id},'q3')">🟡</button>
+            <button class="move-btn" title="Q4 Eliminate" onclick="moveToPriority(${task.id},'q4')">⚪</button>
+          </div>
+          <button class="delete-btn" title="Delete" onclick="deleteTask(${task.id})">🗑️</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderAll() {
+  renderRecommendations();
+  ['inbox','next','wait','someday'].forEach(bin => {
+    const filtered = tasks.filter(t => t.gtdStatus === bin);
+    document.getElementById(`gtd-${bin}`).innerHTML = filtered.length ? filtered.map(taskHTML).join('') : '<p class="empty">All clear ✅</p>';
+  });
+  ['q1','q2','q3','q4'].forEach(q => {
+    const filtered = tasks.filter(t => t.priority === q);
+    document.getElementById(`list-${q}`).innerHTML = filtered.length ? filtered.map(taskHTML).join('') : '<p class="empty">No tasks ✅</p>';
+  });
+}
+
+function checkReminders() {
+  const now = new Date();
+  tasks.forEach(task => {
+    if (!task.completed && task.reminderDate) {
+      const remTime = new Date(`${task.reminderDate}T${task.reminderTime||'00:00'}`);
+      if (now >= remTime && now - remTime < 60000 && Notification.permission === 'granted') {
+        new Notification('🔔 Reminder', { body: task.title, icon: '🔔' });
+      }
+    }
+  });
+}
+if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+
+initTasks();
+renderAll();
+setInterval(checkReminders, 30000);
+</script>
+</body>
+</html>
