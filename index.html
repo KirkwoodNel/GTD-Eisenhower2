@@ -228,12 +228,28 @@ let editingId = null;
 const WORKER_URL = 'https://gtd-todo-sync.marknelson.workers.dev';
 const WORKER_SECRET = 'vr7Z_03UX1u0-gZCzGDc1_GuDcreVv_c8Et8ouv4I6g';
 let syncFailed = false;
+let lastSyncTime = null; // ISO string - when the Worker's cron last actually synced with Microsoft To Do
+
+function formatLastSync(isoString) {
+  const then = new Date(isoString);
+  const diffMin = Math.floor((Date.now() - then.getTime()) / 60000);
+  if (diffMin < 1) return 'just now';
+  if (diffMin < 60) return `${diffMin} min ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  return `${diffDay}d ago`;
+}
 
 function updateSyncStatus() {
   const el = document.getElementById('syncStatus');
   if (!el) return;
-  el.textContent = syncFailed
-    ? '⚠️ Not synced with Microsoft To Do right now - working from the copy saved on this device'
+  if (syncFailed) {
+    el.textContent = '⚠️ Not synced with Microsoft To Do right now - working from the copy saved on this device';
+    return;
+  }
+  el.textContent = lastSyncTime
+    ? `🔄 Synced with Microsoft To Do · Last synced ${formatLastSync(lastSyncTime)}`
     : '🔄 Synced with Microsoft To Do';
 }
 
@@ -242,6 +258,8 @@ async function fetchTasksFromServer() {
     headers: { Authorization: `Bearer ${WORKER_SECRET}` }
   });
   if (!resp.ok) throw new Error(`Worker GET failed: ${resp.status}`);
+  const headerLastSync = resp.headers.get('X-Last-Sync');
+  if (headerLastSync) lastSyncTime = headerLastSync;
   return resp.json();
 }
 
@@ -488,6 +506,7 @@ if ('Notification' in window && Notification.permission === 'default') Notificat
 initTasks().then(renderAll);
 setInterval(checkReminders, 30000);
 setInterval(pollServer, 60000);
+setInterval(updateSyncStatus, 30000); // keep "Last synced X ago" text fresh between polls
 </script>
 </body>
 </html>
