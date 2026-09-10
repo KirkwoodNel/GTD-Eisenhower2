@@ -51,6 +51,8 @@
   .gtd-row,.matrix-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:12px}
   .gtd-column,.quadrant{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
   .gtd-header,.q-header{padding:10px 14px;font-weight:700;color:#fff;font-size:0.9rem}
+  .count-badge{font-weight:600;opacity:0.85;margin-left:3px}
+  .total-count{text-align:center;font-weight:700;color:#2d3436;margin-bottom:16px;font-size:1rem}
   .gtd-inbox .gtd-header{background:var(--gtd-inbox)}
   .gtd-next .gtd-header{background:var(--gtd-next)}
   .gtd-wait .gtd-header{background:var(--gtd-wait)}
@@ -108,6 +110,7 @@
   <h1>✏️ Edit & Stage — Smart GTD × Eisenhower</h1>
   <p class="subtitle">Tap any task to edit · Move between sections instantly</p>
   <p id="syncStatus" style="text-align:center;font-size:0.75rem;color:#b2bec3;margin-bottom:12px"></p>
+  <p id="totalActiveCount" class="total-count"></p>
   <div class="toggle-row">
     <label>
       <input type="checkbox" id="hideCompletedToggle" class="toggle-checkbox" onchange="toggleHideCompleted()">
@@ -207,19 +210,19 @@
   <h3 class="section-title">📂 GTD Workflow — Stage tasks below</h3>
   <div class="gtd-row">
     <div class="gtd-column gtd-inbox">
-      <div class="gtd-header">📥 Inbox</div>
+      <div class="gtd-header">📥 Inbox <span class="count-badge" id="count-gtd-inbox"></span></div>
       <div class="task-list" id="gtd-inbox" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'gtd-inbox')"></div>
     </div>
     <div class="gtd-column gtd-next">
-      <div class="gtd-header">▶️ Next Actions</div>
+      <div class="gtd-header">▶️ Next Actions <span class="count-badge" id="count-gtd-next"></span></div>
       <div class="task-list" id="gtd-next" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'gtd-next')"></div>
     </div>
     <div class="gtd-column gtd-wait">
-      <div class="gtd-header">⏳ Waiting For</div>
+      <div class="gtd-header">⏳ Waiting For <span class="count-badge" id="count-gtd-wait"></span></div>
       <div class="task-list" id="gtd-wait" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'gtd-wait')"></div>
     </div>
     <div class="gtd-column gtd-someday">
-      <div class="gtd-header">💭 Someday/Maybe</div>
+      <div class="gtd-header">💭 Someday/Maybe <span class="count-badge" id="count-gtd-someday"></span></div>
       <div class="task-list" id="gtd-someday" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'gtd-someday')"></div>
     </div>
   </div>
@@ -227,19 +230,19 @@
   <h3 class="section-title">🎯 Eisenhower Priority Matrix — Stage tasks below</h3>
   <div class="matrix-row">
     <div class="quadrant q1">
-      <div class="q-header">DO NOW<div class="q-desc">Urgent & Important</div></div>
+      <div class="q-header">DO NOW <span class="count-badge" id="count-q1"></span><div class="q-desc">Urgent & Important</div></div>
       <div class="task-list" id="list-q1" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'list-q1')"></div>
     </div>
     <div class="quadrant q2">
-      <div class="q-header">SCHEDULE<div class="q-desc">Not Urgent & Important</div></div>
+      <div class="q-header">SCHEDULE <span class="count-badge" id="count-q2"></span><div class="q-desc">Not Urgent & Important</div></div>
       <div class="task-list" id="list-q2" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'list-q2')"></div>
     </div>
     <div class="quadrant q3">
-      <div class="q-header">DELEGATE<div class="q-desc">Urgent & Not Important</div></div>
+      <div class="q-header">DELEGATE <span class="count-badge" id="count-q3"></span><div class="q-desc">Urgent & Not Important</div></div>
       <div class="task-list" id="list-q3" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'list-q3')"></div>
     </div>
     <div class="quadrant q4">
-      <div class="q-header">ELIMINATE<div class="q-desc">Not Urgent & Not Important</div></div>
+      <div class="q-header">ELIMINATE <span class="count-badge" id="count-q4"></span><div class="q-desc">Not Urgent & Not Important</div></div>
       <div class="task-list" id="list-q4" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'list-q4')"></div>
     </div>
   </div>
@@ -614,12 +617,20 @@ function toggleHideCompleted() {
 function renderAll() {
   renderRecommendations();
   const visible = hideCompleted ? tasks.filter(t => !t.completed) : tasks;
+
+  const activeCount = tasks.filter(t => !t.completed).length;
+  document.getElementById('totalActiveCount').textContent = `📋 ${activeCount} task${activeCount === 1 ? '' : 's'} not complete`;
+
   ['inbox','next','wait','someday'].forEach(bin => {
     const filtered = visible.filter(t => t.gtdStatus === bin);
+    const activeInBin = tasks.filter(t => t.gtdStatus === bin && !t.completed).length;
+    document.getElementById(`count-gtd-${bin}`).textContent = `(${activeInBin})`;
     document.getElementById(`gtd-${bin}`).innerHTML = filtered.length ? filtered.map(taskHTML).join('') : '<p class="empty">All clear ✅</p>';
   });
   ['q1','q2','q3','q4'].forEach(q => {
     const filtered = visible.filter(t => t.priority === q);
+    const activeInQ = tasks.filter(t => t.priority === q && !t.completed).length;
+    document.getElementById(`count-${q}`).textContent = `(${activeInQ})`;
     document.getElementById(`list-${q}`).innerHTML = filtered.length ? filtered.map(taskHTML).join('') : '<p class="empty">No tasks ✅</p>';
   });
 }
