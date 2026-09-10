@@ -60,10 +60,19 @@
   .btn-primary:hover{transform:translateY(-1px)}
   .btn-reset{background:#e0e0e0;color:#555;margin-top:8px}
 
-  .section-title{font-size:1rem;margin:20px 0 10px;color:#555}
-  .gtd-row,.matrix-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:12px}
+  .section-title{font-size:1rem;margin:0;color:#555}
+  .section-header{display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;margin:20px 0 10px;user-select:none;padding:4px;border-radius:8px}
+  .section-header:hover{background:rgba(0,0,0,.03)}
+  .section-toggle-btn{background:none;border:none;font-size:0.9rem;color:#888;padding:4px 8px;border-radius:8px;transition:transform .25s}
+  .section-toggle-btn.collapsed{transform:rotate(-90deg)}
+  .gtd-row,.matrix-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:12px;max-height:6000px;overflow:hidden;transition:max-height .3s cubic-bezier(.4,0,.2,1),opacity .25s ease,margin .3s ease}
+  .gtd-row.collapsed,.matrix-row.collapsed{max-height:0;opacity:0;margin-bottom:0}
   .gtd-column,.quadrant{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
   .gtd-header,.q-header{padding:10px 14px;font-weight:700;color:#fff;font-size:0.9rem}
+  .bucket-sort{display:flex;align-items:center;gap:6px;padding:8px 10px;background:rgba(0,0,0,.03);border-bottom:1px solid rgba(0,0,0,.05)}
+  .sort-select{flex:1;padding:5px 8px;font-size:0.7rem;font-weight:600;border-radius:8px;background:#fff;border:1px solid #e4e4ee;color:#555}
+  .sort-dir-btn{padding:5px 10px;font-size:0.7rem;border-radius:8px;background:#fff;border:1px solid #e4e4ee;color:#6c5ce7}
+  .sort-dir-btn:hover{background:#f1f0fe}
   .count-badge{font-weight:600;opacity:0.85;margin-left:3px}
   .total-count{text-align:center;font-weight:700;color:#2d3436;margin-bottom:16px;font-size:1rem}
   .gtd-inbox .gtd-header{background:var(--gtd-inbox)}
@@ -88,6 +97,17 @@
   .task.completed{opacity:.6;border-left-color:var(--done)}
   .task.just-completed{opacity:1;border-left-color:#2ecc71;background:#eafaf1}
   .task.completed .task-text{text-decoration:line-through;color:var(--done)}
+  .task.overdue{background:#e74c3c;border-left-color:#c0392b}
+  .task.overdue .task-title{color:#fff}
+  .task.overdue .task-meta{color:#ffe3e0}
+  .task.overdue .meta-tag{background:rgba(255,255,255,.25);color:#fff}
+  .task.overdue .meta-tag[href]{color:#fff}
+  .task.overdue .meta-tag[href]:hover{background:rgba(255,255,255,.4)}
+  .task.overdue .task-notes-preview{color:#ffe3e0}
+  .task.overdue .checkbox{border-color:#fff}
+  .task.overdue .move-btn{background:rgba(255,255,255,.25);color:#fff}
+  .task.overdue .move-btn:hover{background:rgba(255,255,255,.4)}
+  .task.overdue .delete-btn{color:#fff}
   .task-row{display:flex;align-items:flex-start;gap:8px}
   .checkbox{width:22px;height:22px;border-radius:6px;border:2px solid #ccc;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-top:2px;flex-shrink:0;transition:.2s}
   .checkbox.checked{background:#2ecc71;border-color:#2ecc71;color:#fff}
@@ -232,42 +252,104 @@
     </div>
   </div>
 
-  <h3 class="section-title">📂 GTD Workflow — Stage tasks below</h3>
-  <div class="gtd-row">
+  <div class="section-header" onclick="toggleSection('gtdRow')">
+    <h3 class="section-title">📂 GTD Workflow — Stage tasks below</h3>
+    <button type="button" class="section-toggle-btn" id="gtdRowToggle" onclick="event.stopPropagation();toggleSection('gtdRow')">▾</button>
+  </div>
+  <div class="gtd-row" id="gtdRow">
     <div class="gtd-column gtd-inbox">
       <div class="gtd-header">📥 Inbox <span class="count-badge" id="count-gtd-inbox"></span></div>
+      <div class="bucket-sort">
+        <select class="sort-select" id="sortField-gtd-inbox" onchange="setSort('gtd-inbox', this.value)">
+          <option value="score">Sort: Score</option>
+          <option value="due">Sort: Due Date</option>
+        </select>
+        <button type="button" class="sort-dir-btn" id="sortDir-gtd-inbox" onclick="toggleSortDir('gtd-inbox')" title="Toggle sort direction">▼</button>
+      </div>
       <div class="task-list" id="gtd-inbox" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'gtd-inbox')"></div>
     </div>
     <div class="gtd-column gtd-next">
       <div class="gtd-header">▶️ Next Actions <span class="count-badge" id="count-gtd-next"></span></div>
+      <div class="bucket-sort">
+        <select class="sort-select" id="sortField-gtd-next" onchange="setSort('gtd-next', this.value)">
+          <option value="score">Sort: Score</option>
+          <option value="due">Sort: Due Date</option>
+        </select>
+        <button type="button" class="sort-dir-btn" id="sortDir-gtd-next" onclick="toggleSortDir('gtd-next')" title="Toggle sort direction">▼</button>
+      </div>
       <div class="task-list" id="gtd-next" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'gtd-next')"></div>
     </div>
     <div class="gtd-column gtd-wait">
       <div class="gtd-header">⏳ Waiting For <span class="count-badge" id="count-gtd-wait"></span></div>
+      <div class="bucket-sort">
+        <select class="sort-select" id="sortField-gtd-wait" onchange="setSort('gtd-wait', this.value)">
+          <option value="score">Sort: Score</option>
+          <option value="due">Sort: Due Date</option>
+        </select>
+        <button type="button" class="sort-dir-btn" id="sortDir-gtd-wait" onclick="toggleSortDir('gtd-wait')" title="Toggle sort direction">▼</button>
+      </div>
       <div class="task-list" id="gtd-wait" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'gtd-wait')"></div>
     </div>
     <div class="gtd-column gtd-someday">
       <div class="gtd-header">💭 Someday/Maybe <span class="count-badge" id="count-gtd-someday"></span></div>
+      <div class="bucket-sort">
+        <select class="sort-select" id="sortField-gtd-someday" onchange="setSort('gtd-someday', this.value)">
+          <option value="score">Sort: Score</option>
+          <option value="due">Sort: Due Date</option>
+        </select>
+        <button type="button" class="sort-dir-btn" id="sortDir-gtd-someday" onclick="toggleSortDir('gtd-someday')" title="Toggle sort direction">▼</button>
+      </div>
       <div class="task-list" id="gtd-someday" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'gtd-someday')"></div>
     </div>
   </div>
 
-  <h3 class="section-title">🎯 Eisenhower Priority Matrix — Stage tasks below</h3>
-  <div class="matrix-row">
+  <div class="section-header" onclick="toggleSection('matrixRow')">
+    <h3 class="section-title">🎯 Eisenhower Priority Matrix — Stage tasks below</h3>
+    <button type="button" class="section-toggle-btn" id="matrixRowToggle" onclick="event.stopPropagation();toggleSection('matrixRow')">▾</button>
+  </div>
+  <div class="matrix-row" id="matrixRow">
     <div class="quadrant q1">
       <div class="q-header">DO NOW <span class="count-badge" id="count-q1"></span><div class="q-desc">Urgent & Important</div></div>
+      <div class="bucket-sort">
+        <select class="sort-select" id="sortField-list-q1" onchange="setSort('list-q1', this.value)">
+          <option value="score">Sort: Score</option>
+          <option value="due">Sort: Due Date</option>
+        </select>
+        <button type="button" class="sort-dir-btn" id="sortDir-list-q1" onclick="toggleSortDir('list-q1')" title="Toggle sort direction">▼</button>
+      </div>
       <div class="task-list" id="list-q1" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'list-q1')"></div>
     </div>
     <div class="quadrant q2">
       <div class="q-header">SCHEDULE <span class="count-badge" id="count-q2"></span><div class="q-desc">Not Urgent & Important</div></div>
+      <div class="bucket-sort">
+        <select class="sort-select" id="sortField-list-q2" onchange="setSort('list-q2', this.value)">
+          <option value="score">Sort: Score</option>
+          <option value="due">Sort: Due Date</option>
+        </select>
+        <button type="button" class="sort-dir-btn" id="sortDir-list-q2" onclick="toggleSortDir('list-q2')" title="Toggle sort direction">▼</button>
+      </div>
       <div class="task-list" id="list-q2" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'list-q2')"></div>
     </div>
     <div class="quadrant q3">
       <div class="q-header">DELEGATE <span class="count-badge" id="count-q3"></span><div class="q-desc">Urgent & Not Important</div></div>
+      <div class="bucket-sort">
+        <select class="sort-select" id="sortField-list-q3" onchange="setSort('list-q3', this.value)">
+          <option value="score">Sort: Score</option>
+          <option value="due">Sort: Due Date</option>
+        </select>
+        <button type="button" class="sort-dir-btn" id="sortDir-list-q3" onclick="toggleSortDir('list-q3')" title="Toggle sort direction">▼</button>
+      </div>
       <div class="task-list" id="list-q3" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'list-q3')"></div>
     </div>
     <div class="quadrant q4">
       <div class="q-header">ELIMINATE <span class="count-badge" id="count-q4"></span><div class="q-desc">Not Urgent & Not Important</div></div>
+      <div class="bucket-sort">
+        <select class="sort-select" id="sortField-list-q4" onchange="setSort('list-q4', this.value)">
+          <option value="score">Sort: Score</option>
+          <option value="due">Sort: Due Date</option>
+        </select>
+        <button type="button" class="sort-dir-btn" id="sortDir-list-q4" onclick="toggleSortDir('list-q4')" title="Toggle sort direction">▼</button>
+      </div>
       <div class="task-list" id="list-q4" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'list-q4')"></div>
     </div>
   </div>
@@ -634,10 +716,17 @@ function renderRecommendations() {
   `;
 }
 
+function isOverdue(task) {
+  if (task.completed || !task.dueDate) return false;
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  return new Date(task.dueDate + 'T00:00:00') < now;
+}
+
 function taskHTML(task) {
   const score = calculateUrgencyScore(task);
+  const overdue = isOverdue(task);
   return `
-    <div class="task ${task.priority} ${task.completed?'completed':''}" draggable="true" ondragstart="handleDragStart(event,'${task.id}')" ondragend="handleDragEnd(event)" onclick="editTask('${task.id}')">
+    <div class="task ${task.priority} ${task.completed?'completed':''} ${overdue?'overdue':''}" draggable="true" ondragstart="handleDragStart(event,'${task.id}')" ondragend="handleDragEnd(event)" onclick="editTask('${task.id}')">
       <div class="task-row">
         <div class="checkbox ${task.completed?'checked':''}" draggable="false" onclick="event.stopPropagation();toggleComplete('${task.id}', this)">
           ${task.completed?'✓':''}
@@ -679,6 +768,62 @@ function toggleHideCompleted() {
   renderAll();
 }
 
+// --- Collapsible section headers (GTD Workflow / Eisenhower Matrix) ---
+let collapsedSections = JSON.parse(localStorage.getItem('collapsedSections') || '{}');
+function toggleSection(id) {
+  collapsedSections[id] = !collapsedSections[id];
+  localStorage.setItem('collapsedSections', JSON.stringify(collapsedSections));
+  applySectionState(id);
+}
+function applySectionState(id) {
+  const collapsed = !!collapsedSections[id];
+  document.getElementById(id)?.classList.toggle('collapsed', collapsed);
+  document.getElementById(id + 'Toggle')?.classList.toggle('collapsed', collapsed);
+}
+
+// --- Per-bucket sorting (Score or Due Date, ascending or descending) ---
+let bucketSort = JSON.parse(localStorage.getItem('bucketSort') || '{}');
+const ALL_BUCKETS = ['gtd-inbox','gtd-next','gtd-wait','gtd-someday','list-q1','list-q2','list-q3','list-q4'];
+function getBucketSort(bucket) {
+  if (!bucketSort[bucket]) bucketSort[bucket] = { field: 'score', dir: 'desc' };
+  return bucketSort[bucket];
+}
+function setSort(bucket, field) {
+  getBucketSort(bucket).field = field;
+  localStorage.setItem('bucketSort', JSON.stringify(bucketSort));
+  renderAll();
+}
+function toggleSortDir(bucket) {
+  const s = getBucketSort(bucket);
+  s.dir = s.dir === 'asc' ? 'desc' : 'asc';
+  localStorage.setItem('bucketSort', JSON.stringify(bucketSort));
+  renderAll();
+}
+function syncSortUI(bucket) {
+  const { field, dir } = getBucketSort(bucket);
+  const sel = document.getElementById(`sortField-${bucket}`);
+  if (sel) sel.value = field;
+  const btn = document.getElementById(`sortDir-${bucket}`);
+  if (btn) {
+    btn.textContent = dir === 'asc' ? '▲' : '▼';
+    btn.title = dir === 'asc' ? 'Ascending — tap for descending' : 'Descending — tap for ascending';
+  }
+}
+function sortTasksForBucket(bucket, list) {
+  const { field, dir } = getBucketSort(bucket);
+  const sign = dir === 'asc' ? 1 : -1;
+  return [...list].sort((a, b) => {
+    if (field === 'score') return sign * (calculateUrgencyScore(a) - calculateUrgencyScore(b));
+    // Due date: tasks without one always sort to the end, regardless of direction.
+    if (!a.dueDate && !b.dueDate) return 0;
+    if (!a.dueDate) return 1;
+    if (!b.dueDate) return -1;
+    const aKey = a.dueDate + (a.dueTime || '00:00');
+    const bKey = b.dueDate + (b.dueTime || '00:00');
+    return sign * (aKey < bKey ? -1 : aKey > bKey ? 1 : 0);
+  });
+}
+
 function renderAll() {
   renderRecommendations();
   const visible = hideCompleted ? tasks.filter(t => !t.completed) : tasks;
@@ -687,17 +832,20 @@ function renderAll() {
   document.getElementById('totalActiveCount').textContent = `📋 ${activeCount} task${activeCount === 1 ? '' : 's'} not complete`;
 
   ['inbox','next','wait','someday'].forEach(bin => {
-    const filtered = visible.filter(t => t.gtdStatus === bin);
+    const bucket = `gtd-${bin}`;
+    const filtered = sortTasksForBucket(bucket, visible.filter(t => t.gtdStatus === bin));
     const activeInBin = tasks.filter(t => t.gtdStatus === bin && !t.completed).length;
     document.getElementById(`count-gtd-${bin}`).textContent = `(${activeInBin})`;
-    document.getElementById(`gtd-${bin}`).innerHTML = filtered.length ? filtered.map(taskHTML).join('') : '<p class="empty">All clear ✅</p>';
+    document.getElementById(bucket).innerHTML = filtered.length ? filtered.map(taskHTML).join('') : '<p class="empty">All clear ✅</p>';
   });
   ['q1','q2','q3','q4'].forEach(q => {
-    const filtered = visible.filter(t => t.priority === q);
+    const bucket = `list-${q}`;
+    const filtered = sortTasksForBucket(bucket, visible.filter(t => t.priority === q));
     const activeInQ = tasks.filter(t => t.priority === q && !t.completed).length;
     document.getElementById(`count-${q}`).textContent = `(${activeInQ})`;
-    document.getElementById(`list-${q}`).innerHTML = filtered.length ? filtered.map(taskHTML).join('') : '<p class="empty">No tasks ✅</p>';
+    document.getElementById(bucket).innerHTML = filtered.length ? filtered.map(taskHTML).join('') : '<p class="empty">No tasks ✅</p>';
   });
+  ALL_BUCKETS.forEach(syncSortUI);
 }
 
 function checkReminders() {
@@ -714,6 +862,7 @@ function checkReminders() {
 if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
 
 document.getElementById('hideCompletedToggle').checked = hideCompleted;
+['gtdRow','matrixRow'].forEach(applySectionState);
 initTasks().then(renderAll);
 setInterval(checkReminders, 30000);
 setInterval(pollServer, 60000);
