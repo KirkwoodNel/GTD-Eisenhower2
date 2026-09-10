@@ -136,6 +136,7 @@
   .pill-btn{padding:3px 9px;font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.2px;border-radius:12px;color:#fff;border:none;cursor:pointer;white-space:nowrap;line-height:1.6}
   .pill-btn:hover{filter:brightness(1.08)}
   .pill-btn.pill-current{display:inline-flex;align-items:center;gap:2px}
+  .pill-btn.pill-clear{background:#dfe6e9;color:#636e72}
   .delete-btn{background:none;border:none;color:#e17055;cursor:pointer;font-size:0.9rem;padding:2px;margin-left:auto}
   .empty{text-align:center;color:#b2bec3;padding:16px;font-style:italic;font-size:0.85rem}
   .toggle-row{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:16px}
@@ -736,7 +737,7 @@ function moveToSize(id, newSize) {
     renderAll();
     return;
   }
-  task.size = newSize; markDirty(task); saveTasks(); delete expandedPills[id]; renderAll();
+  task.size = newSize || undefined; markDirty(task); saveTasks(); delete expandedPills[id]; renderAll();
 }
 
 // --- Per-task pill controls: 2 (later 3) collapsed pills that expand to show all options ---
@@ -765,16 +766,20 @@ const SIZE_META = {
 };
 const SIZE_UNSET = { label: 'Size?', color: '#dfe6e9', text: '#636e72' };
 
-function renderPillGroup(taskId, dim, currentKey, meta, unsetMeta, moveFn) {
+function renderPillGroup(taskId, dim, currentKey, meta, unsetMeta, moveFn, clearLabel) {
   const current = meta[currentKey] || unsetMeta;
   if (expandedPills[taskId] !== dim) {
     const style = `background:${current.color};${current.text ? `color:${current.text}` : ''}`;
     return `<button type="button" class="pill-btn pill-current" style="${style}" onclick="togglePill('${taskId}','${dim}',event)">${current.label} ▾</button>`;
   }
-  return Object.entries(meta).map(([key, m]) => {
+  const optionButtons = Object.entries(meta).map(([key, m]) => {
     const style = `background:${m.color};${m.text ? `color:${m.text}` : ''}`;
     return `<button type="button" class="pill-btn" style="${style}" onclick="event.stopPropagation();${moveFn}('${taskId}','${key}')">${m.label}</button>`;
   }).join('');
+  const clearButton = clearLabel
+    ? `<button type="button" class="pill-btn pill-clear" onclick="event.stopPropagation();${moveFn}('${taskId}','')">${clearLabel}</button>`
+    : '';
+  return optionButtons + clearButton;
 }
 
 // --- Drag & drop between GTD columns / Eisenhower quadrants (desktop mouse drag) ---
@@ -916,7 +921,7 @@ function taskHTML(task) {
         <div class="task-actions" draggable="false" onclick="event.stopPropagation()">
           <div class="pill-row">${renderPillGroup(task.id, 'gtd', task.gtdStatus, GTD_META, null, 'moveToGTD')}</div>
           <div class="pill-row">${renderPillGroup(task.id, 'priority', task.priority, PRIORITY_META, null, 'moveToPriority')}</div>
-          <div class="pill-row">${renderPillGroup(task.id, 'size', task.size, SIZE_META, SIZE_UNSET, 'moveToSize')}</div>
+          <div class="pill-row">${renderPillGroup(task.id, 'size', task.size, SIZE_META, SIZE_UNSET, 'moveToSize', 'Clear')}</div>
           <button class="delete-btn" title="Delete" onclick="deleteTask('${task.id}')">🗑️</button>
         </div>
       </div>
