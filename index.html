@@ -151,7 +151,6 @@
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn-primary" id="saveBtn" onclick="saveTask()">💾 Save Task</button>
-      <button class="btn-reset" onclick="resetToDefaults()">↩️ Reset Examples</button>
     </div>
   </div>
 
@@ -197,22 +196,6 @@
 </div>
 
 <script>
-const EXAMPLE_TASKS = [
-  { id: 1, title: "Submit quarterly financial report", gtdStatus: "next", priority: "q1", dueDate: formatDateStr(1), dueTime: "17:00", reminderDate: formatDateStr(0), reminderTime: "09:00", context: "@Computer", completed: false },
-  { id: 2, title: "Finalise client contract proposal", gtdStatus: "next", priority: "q1", dueDate: formatDateStr(2), dueTime: "12:00", reminderDate: formatDateStr(1), reminderTime: "14:00", context: "@Computer", completed: false },
-  { id: 3, title: "Review Q4 strategic goals & plan", gtdStatus: "next", priority: "q2", dueDate: formatDateStr(7), dueTime: "", reminderDate: formatDateStr(5), reminderTime: "10:00", context: "@Meeting", completed: false },
-  { id: 4, title: "Reply to marketing agency email", gtdStatus: "inbox", priority: "q3", dueDate: formatDateStr(3), dueTime: "", reminderDate: "", reminderTime: "", context: "@Email", completed: false },
-  { id: 5, title: "Book team lunch venue", gtdStatus: "next", priority: "q3", dueDate: formatDateStr(4), dueTime: "", reminderDate: formatDateStr(2), reminderTime: "11:00", context: "@Phone", completed: false },
-  { id: 6, title: "Research new industry software", gtdStatus: "someday", priority: "q4", dueDate: "", dueTime: "", reminderDate: "", reminderTime: "", context: "@Computer", completed: false },
-  { id: 7, title: "Wait for vendor price quote", gtdStatus: "wait", priority: "q3", dueDate: formatDateStr(5), dueTime: "", reminderDate: formatDateStr(3), reminderTime: "15:00", context: "@Vendor", completed: false },
-  { id: 8, title: "Update professional portfolio website", gtdStatus: "someday", priority: "q2", dueDate: formatDateStr(21), dueTime: "", reminderDate: formatDateStr(14), reminderTime: "", context: "@Computer", completed: false }
-];
-
-function formatDateStr(daysAhead) {
-  const d = new Date(); d.setDate(d.getDate() + daysAhead);
-  return d.toISOString().split('T')[0];
-}
-
 function calculateUrgencyScore(task) {
   let score = 0;
   const priorityWeights = { q1: 40, q2: 25, q3: 15, q4: 5 };
@@ -277,20 +260,12 @@ async function initTasks() {
 
   try {
     const serverTasks = await fetchTasksFromServer();
-    if (serverTasks.length === 0 && (!cached || JSON.parse(cached).length === 0)) {
-      tasks = EXAMPLE_TASKS.map(t => ({ ...t, lastModified: new Date().toISOString(), source: 'app' }));
-      await saveTasks();
-    } else {
-      tasks = serverTasks;
-      localStorage.setItem('editStageTodo', JSON.stringify(tasks));
-    }
+    tasks = serverTasks;
+    localStorage.setItem('editStageTodo', JSON.stringify(tasks));
     syncFailed = false; updateSyncStatus();
   } catch (e) {
     console.warn('Could not reach sync server, using local copy only:', e);
     syncFailed = true; updateSyncStatus();
-    if (!cached) {
-      tasks = EXAMPLE_TASKS.map(t => ({ ...t, lastModified: new Date().toISOString(), source: 'app' }));
-    }
   }
 }
 
@@ -311,13 +286,6 @@ async function saveTasks() {
     syncFailed = true;
   }
   updateSyncStatus();
-}
-
-function resetToDefaults() {
-  if (confirm('Reset to example tasks? Your tasks will be replaced.')) {
-    tasks = EXAMPLE_TASKS.map(t => ({ ...t, id: Date.now() + Math.random(), lastModified: new Date().toISOString(), source: 'app' }));
-    saveTasks(); renderAll(); cancelEdit();
-  }
 }
 
 // Pick up changes made elsewhere (a flagged email, or an edit in Microsoft To Do) without
