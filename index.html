@@ -53,6 +53,9 @@
   .quick-btn:hover{background:#e0defc}
   .quick-btn.active{background:#6c5ce7;color:#fff;box-shadow:0 2px 8px rgba(108,92,231,.35)}
   .datetime-card{background:#f7f7fb;border:1px solid #ececf4;border-radius:14px;padding:14px 16px}
+  .datetime-card-label-row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+  .match-due-btn{padding:5px 10px;font-size:0.7rem;font-weight:600;border-radius:20px;background:#eeecfc;color:#6c5ce7;border:1px solid transparent}
+  .match-due-btn:hover{background:#e0defc}
   .datetime-row{display:flex;gap:10px;flex-wrap:wrap}
   .datetime-row input{flex:1;min-width:130px;background:#fff}
   .quick-group-label{font-size:0.65rem;font-weight:700;color:#9b95e0;text-transform:uppercase;letter-spacing:.5px;margin-top:10px;display:block}
@@ -84,6 +87,9 @@
   .q2 .q-header{background:var(--q2)}
   .q3 .q-header{background:var(--q3);color:#2d3436}
   .q4 .q-header{background:var(--q4)}
+  .size-big .q-header{background:#4a3f99}
+  .size-medium .q-header{background:#6c5ce7}
+  .size-small .q-header{background:#a29bfe}
 
   .task-list{padding:12px;min-height:60px;transition:background .15s,box-shadow .15s;border-radius:8px}
   .task-list.drag-over{background:#eef6ff;box-shadow:inset 0 0 0 2px #6c5ce7}
@@ -213,7 +219,10 @@
           </div>
         </div>
         <div class="form-group datetime-card" style="grid-column: 1 / -1">
-          <label>🔔 Reminder</label>
+          <div class="datetime-card-label-row">
+            <label>🔔 Reminder</label>
+            <button type="button" class="match-due-btn" onclick="matchReminderToDue()">= Match Due Date/Time</button>
+          </div>
           <div class="datetime-row">
             <input type="date" id="reminderDate" oninput="syncChipActive('reminderDate')">
             <input type="time" id="reminderTime" oninput="syncChipActive('reminderTime')">
@@ -354,6 +363,46 @@
       <div class="task-list" id="list-q4" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'list-q4')"></div>
     </div>
   </div>
+
+  <div class="section-header" onclick="toggleSection('rule135Row')">
+    <h3 class="section-title">🧠 1-3-5 Rule — ADHD Focus Buckets</h3>
+    <button type="button" class="section-toggle-btn" id="rule135RowToggle" onclick="event.stopPropagation();toggleSection('rule135Row')">▾</button>
+  </div>
+  <div class="matrix-row" id="rule135Row">
+    <div class="quadrant size-big">
+      <div class="q-header">1 BIG <span class="count-badge" id="count-size-big"></span></div>
+      <div class="bucket-sort">
+        <select class="sort-select" id="sortField-size-big" onchange="setSort('size-big', this.value)">
+          <option value="score">Sort: Score</option>
+          <option value="due">Sort: Due Date</option>
+        </select>
+        <button type="button" class="sort-dir-btn" id="sortDir-size-big" onclick="toggleSortDir('size-big')" title="Toggle sort direction">▼</button>
+      </div>
+      <div class="task-list" id="size-big" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'size-big')"></div>
+    </div>
+    <div class="quadrant size-medium">
+      <div class="q-header">3 MEDIUM <span class="count-badge" id="count-size-medium"></span></div>
+      <div class="bucket-sort">
+        <select class="sort-select" id="sortField-size-medium" onchange="setSort('size-medium', this.value)">
+          <option value="score">Sort: Score</option>
+          <option value="due">Sort: Due Date</option>
+        </select>
+        <button type="button" class="sort-dir-btn" id="sortDir-size-medium" onclick="toggleSortDir('size-medium')" title="Toggle sort direction">▼</button>
+      </div>
+      <div class="task-list" id="size-medium" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'size-medium')"></div>
+    </div>
+    <div class="quadrant size-small">
+      <div class="q-header">5 SMALL <span class="count-badge" id="count-size-small"></span></div>
+      <div class="bucket-sort">
+        <select class="sort-select" id="sortField-size-small" onchange="setSort('size-small', this.value)">
+          <option value="score">Sort: Score</option>
+          <option value="due">Sort: Due Date</option>
+        </select>
+        <button type="button" class="sort-dir-btn" id="sortDir-size-small" onclick="toggleSortDir('size-small')" title="Toggle sort direction">▼</button>
+      </div>
+      <div class="task-list" id="size-small" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'size-small')"></div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -376,6 +425,8 @@ function calculateUrgencyScore(task) {
   }
   if (task.dueTime) score += 5;
   if (task.reminderDate || task.reminderTime) score += 5;
+  const sizeWeights = { big: 49, medium: 28, small: 13 };
+  score += sizeWeights[task.size] || 0;
   return Math.round(score);
 }
 
@@ -574,6 +625,12 @@ function syncChipActive(fieldId) {
     btn.classList.toggle('active', !!input.value && input.value === target);
   });
 }
+function matchReminderToDue() {
+  document.getElementById('reminderDate').value = document.getElementById('dueDate').value;
+  document.getElementById('reminderTime').value = document.getElementById('dueTime').value;
+  syncChipActive('reminderDate');
+  syncChipActive('reminderTime');
+}
 
 function saveTask() {
   const title = document.getElementById('taskTitle').value.trim();
@@ -608,9 +665,20 @@ function moveToPriority(id, newPriority) {
   const task = tasks.find(t => String(t.id) === String(id));
   if (task) { task.priority = newPriority; markDirty(task); saveTasks(); delete expandedPills[id]; renderAll(); }
 }
+const SIZE_CAPS = { big: 1, medium: 3, small: 5 };
 function moveToSize(id, newSize) {
   const task = tasks.find(t => String(t.id) === String(id));
-  if (task) { task.size = newSize; markDirty(task); saveTasks(); delete expandedPills[id]; renderAll(); }
+  if (!task) return;
+  if (task.size !== newSize) {
+    const inUse = tasks.filter(t => !t.completed && t.size === newSize && String(t.id) !== String(id)).length;
+    if (inUse >= SIZE_CAPS[newSize]) {
+      alert(`⚠️ The ADHD 1-3-5 rule allows at most ${SIZE_CAPS[newSize]} "${newSize}" task${SIZE_CAPS[newSize] > 1 ? 's' : ''} at a time. Finish or reassign one first.`);
+      delete expandedPills[id];
+      renderAll();
+      return;
+    }
+  }
+  task.size = newSize; markDirty(task); saveTasks(); delete expandedPills[id]; renderAll();
 }
 
 // --- Per-task pill controls: 2 (later 3) collapsed pills that expand to show all options ---
@@ -681,6 +749,8 @@ function handleDrop(e, targetListId) {
     moveToGTD(id, targetListId.slice(4));
   } else if (targetListId.startsWith('list-')) {
     moveToPriority(id, targetListId.slice(5));
+  } else if (targetListId.startsWith('size-')) {
+    moveToSize(id, targetListId.slice(5));
   }
 }
 
@@ -734,7 +804,7 @@ function renderRecommendations() {
     <div class="top-task">
       <strong style="font-size:1rem">🏆 #1 Recommended:</strong>
       <div style="font-size:1rem;margin:6px 0;font-weight:600">${top.title}
-        <span class="score-badge" style="background:${scoreColor}">${top.score}/100</span>
+        <span class="score-badge" style="background:${scoreColor}">${top.score}/149</span>
       </div>
       <div style="font-size:0.8rem;color:#666">
         ${top.context?`📍 ${top.context}`:''}
@@ -817,7 +887,7 @@ function applySectionState(id) {
 
 // --- Per-bucket sorting (Score or Due Date, ascending or descending) ---
 let bucketSort = JSON.parse(localStorage.getItem('bucketSort') || '{}');
-const ALL_BUCKETS = ['gtd-inbox','gtd-next','gtd-wait','gtd-someday','list-q1','list-q2','list-q3','list-q4'];
+const ALL_BUCKETS = ['gtd-inbox','gtd-next','gtd-wait','gtd-someday','list-q1','list-q2','list-q3','list-q4','size-big','size-medium','size-small'];
 function getBucketSort(bucket) {
   if (!bucketSort[bucket]) bucketSort[bucket] = { field: 'score', dir: 'desc' };
   return bucketSort[bucket];
@@ -886,6 +956,13 @@ function renderAll() {
     document.getElementById(`count-${q}`).textContent = `(${activeInQ})`;
     document.getElementById(bucket).innerHTML = filtered.length ? filtered.map(taskHTML).join('') : '<p class="empty">No tasks ✅</p>';
   });
+  ['big','medium','small'].forEach(sz => {
+    const bucket = `size-${sz}`;
+    const filtered = sortTasksForBucket(bucket, visible.filter(t => t.size === sz));
+    const activeInSz = tasks.filter(t => t.size === sz && !t.completed).length;
+    document.getElementById(`count-${bucket}`).textContent = `(${activeInSz})`;
+    document.getElementById(bucket).innerHTML = filtered.length ? filtered.map(taskHTML).join('') : '<p class="empty">No tasks ✅</p>';
+  });
   ALL_BUCKETS.forEach(syncSortUI);
 }
 
@@ -903,7 +980,7 @@ function checkReminders() {
 if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
 
 document.getElementById('hideCompletedToggle').checked = hideCompleted;
-['gtdRow','matrixRow'].forEach(applySectionState);
+['gtdRow','matrixRow','rule135Row'].forEach(applySectionState);
 initTasks().then(renderAll);
 setInterval(checkReminders, 30000);
 setInterval(pollServer, 60000);
