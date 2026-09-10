@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Edit & Stage — Smart GTD × Eisenhower To-Do</title>
 <style>
-  *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
+  *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif}
   :root{
     --q1:#ff6b6b; --q2:#4ecdc4; --q3:#ffe066; --q4:#95a5a6;
     --gtd-inbox:#9b59b6; --gtd-next:#27ae60; --gtd-wait:#3498db;
@@ -30,20 +30,33 @@
   .score-med{color:var(--score-med)}
   .score-low{color:var(--score-low)}
 
-  .form-container{background:var(--card);padding:20px;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:20px}
-  .form-title{font-size:1rem;margin-bottom:14px;color:#555;display:flex;justify-content:space-between;align-items:center}
+  .form-container{background:var(--card);padding:16px;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:20px}
+  .create-task-btn{width:100%;background:linear-gradient(135deg,#6c5ce7,#a29bfe);color:#fff;padding:15px;border-radius:14px;font-size:1rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(108,92,231,.35);letter-spacing:.2px}
+  .create-task-btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(108,92,231,.45)}
+  .create-task-icon{font-size:1.2rem;font-weight:700;line-height:1}
+  .form-container.expanded .create-task-btn{display:none}
+  .form-body{max-height:0;opacity:0;overflow:hidden;transition:max-height .35s cubic-bezier(.4,0,.2,1),opacity .25s ease}
+  .form-container.expanded .form-body{max-height:2400px;opacity:1;padding-top:4px}
+  .form-title{font-size:1rem;margin-bottom:14px;color:#555;display:flex;justify-content:space-between;align-items:center;gap:8px}
   .edit-indicator{background:#6c5ce7;color:#fff;padding:4px 10px;border-radius:20px;font-size:0.75rem}
-  .cancel-btn{background:none;border:none;color:#e17055;cursor:pointer;font-size:0.9rem}
-  .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+  .cancel-btn{background:none;border:none;color:#e17055;cursor:pointer;font-size:0.9rem;margin-left:auto}
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
   .form-group{display:flex;flex-direction:column;gap:4px}
   label{font-size:0.8rem;font-weight:600;color:#444;margin-left:2px}
   input,select,button,textarea{padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px}
+  input,select,textarea{background:#f7f7fb;border:1px solid #e4e4ee;border-radius:12px;padding:11px 13px;transition:border-color .15s,box-shadow .15s,background .15s}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:#6c5ce7;box-shadow:0 0 0 3px rgba(108,92,231,.15);background:#fff}
   textarea{font-family:inherit;resize:vertical;width:100%}
   button{border:none;cursor:pointer;font-weight:600;transition:.2s}
-  .quick-row{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
-  .quick-btn{padding:4px 8px;font-size:0.7rem;font-weight:600;border-radius:6px;background:#f1f0fe;color:#6c5ce7;border:1px solid #ddd6fe}
+  .quick-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .quick-btn{padding:6px 12px;font-size:0.75rem;font-weight:600;border-radius:20px;background:#eeecfc;color:#6c5ce7;border:1px solid transparent}
   .quick-btn:hover{background:#e0defc}
-  .btn-primary{background:linear-gradient(135deg,#6c5ce7,#a29bfe);color:#fff;margin-top:8px}
+  .quick-btn.active{background:#6c5ce7;color:#fff;box-shadow:0 2px 8px rgba(108,92,231,.35)}
+  .datetime-card{background:#f7f7fb;border:1px solid #ececf4;border-radius:14px;padding:14px 16px}
+  .datetime-row{display:flex;gap:10px;flex-wrap:wrap}
+  .datetime-row input{flex:1;min-width:130px;background:#fff}
+  .quick-group-label{font-size:0.65rem;font-weight:700;color:#9b95e0;text-transform:uppercase;letter-spacing:.5px;margin-top:10px;display:block}
+  .btn-primary{background:linear-gradient(135deg,#6c5ce7,#a29bfe);color:#fff;margin-top:8px;border-radius:12px;padding:13px}
   .btn-primary:hover{transform:translateY(-1px)}
   .btn-reset{background:#e0e0e0;color:#555;margin-top:8px}
 
@@ -123,87 +136,99 @@
     <div id="recommendPanel"><p style="color:#666">Calculating priorities...</p></div>
   </div>
 
-  <div class="form-container">
-    <div class="form-title">
-      <span id="formMode">➕ Add New Task</span>
-      <span id="editBadge" style="display:none" class="edit-indicator">✏️ Editing Task</span>
-      <button id="cancelEditBtn" style="display:none" class="cancel-btn" onclick="cancelEdit()">✕ Cancel</button>
-    </div>
-    <div class="form-grid">
-      <div class="form-group" style="grid-column: 1 / -1">
-        <label for="taskTitle">📝 Task / Action *</label>
-        <input type="text" id="taskTitle" placeholder="What needs to be done?" required>
+  <div class="form-container" id="formContainer">
+    <button type="button" class="create-task-btn" id="createTaskBtn" onclick="openForm()">
+      <span class="create-task-icon">＋</span> Create Task
+    </button>
+    <div class="form-body" id="formBody">
+      <div class="form-title">
+        <span id="formMode">➕ Add New Task</span>
+        <span id="editBadge" style="display:none" class="edit-indicator">✏️ Editing Task</span>
+        <button id="cancelEditBtn" class="cancel-btn" onclick="cancelEdit()">✕ Cancel</button>
       </div>
-      <div class="form-group">
-        <label for="gtdStatus">📂 GTD Status</label>
-        <select id="gtdStatus">
-          <option value="inbox">📥 Inbox</option>
-          <option value="next">▶️ Next Action</option>
-          <option value="wait">⏳ Waiting For</option>
-          <option value="someday">💭 Someday/Maybe</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label for="priority">🎯 Eisenhower Priority</label>
-        <select id="priority">
-          <option value="q1">🔴 Q1 — Urgent & Important</option>
-          <option value="q2">🔵 Q2 — Not Urgent & Important</option>
-          <option value="q3">🟡 Q3 — Urgent & Not Important</option>
-          <option value="q4">⚪ Q4 — Not Urgent & Not Important</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label for="dueDate">📅 Due Date</label>
-        <input type="date" id="dueDate">
-        <div class="quick-row">
-          <button type="button" class="quick-btn" onclick="setQuickDate('dueDate',1)">+1d</button>
-          <button type="button" class="quick-btn" onclick="setQuickDate('dueDate',2)">+2d</button>
-          <button type="button" class="quick-btn" onclick="setQuickDate('dueDate',3)">+3d</button>
-          <button type="button" class="quick-btn" onclick="setQuickDate('dueDate',4)">+4d</button>
-          <button type="button" class="quick-btn" onclick="setQuickDate('dueDate',5)">+5d</button>
+      <div class="form-grid">
+        <div class="form-group" style="grid-column: 1 / -1">
+          <label for="taskTitle">📝 Task / Action *</label>
+          <input type="text" id="taskTitle" placeholder="What needs to be done?" required>
+        </div>
+        <div class="form-group">
+          <label for="gtdStatus">📂 GTD Status</label>
+          <select id="gtdStatus">
+            <option value="inbox">📥 Inbox</option>
+            <option value="next">▶️ Next Action</option>
+            <option value="wait">⏳ Waiting For</option>
+            <option value="someday">💭 Someday/Maybe</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="priority">🎯 Eisenhower Priority</label>
+          <select id="priority">
+            <option value="q1">🔴 Q1 — Urgent & Important</option>
+            <option value="q2">🔵 Q2 — Not Urgent & Important</option>
+            <option value="q3">🟡 Q3 — Urgent & Not Important</option>
+            <option value="q4">⚪ Q4 — Not Urgent & Not Important</option>
+          </select>
+        </div>
+        <div class="form-group datetime-card" style="grid-column: 1 / -1">
+          <label>📅 Due</label>
+          <div class="datetime-row">
+            <input type="date" id="dueDate" oninput="syncChipActive('dueDate')">
+            <input type="time" id="dueTime" oninput="syncChipActive('dueTime')">
+          </div>
+          <span class="quick-group-label">Date</span>
+          <div class="quick-row" data-for="dueDate">
+            <button type="button" class="quick-btn" data-kind="today" onclick="setQuickDateKind('dueDate','today')">Today</button>
+            <button type="button" class="quick-btn" data-kind="tomorrow" onclick="setQuickDateKind('dueDate','tomorrow')">Tomorrow</button>
+            <button type="button" class="quick-btn" data-kind="weekend" onclick="setQuickDateKind('dueDate','weekend')">This Weekend</button>
+            <button type="button" class="quick-btn" data-kind="nextweek" onclick="setQuickDateKind('dueDate','nextweek')">Next Week</button>
+          </div>
+          <span class="quick-group-label">Time</span>
+          <div class="quick-row" data-for="dueTime">
+            <button type="button" class="quick-btn" data-value="09:00" onclick="setQuickTime('dueTime','09:00')">9am</button>
+            <button type="button" class="quick-btn" data-value="12:00" onclick="setQuickTime('dueTime','12:00')">12pm</button>
+            <button type="button" class="quick-btn" data-value="15:00" onclick="setQuickTime('dueTime','15:00')">3pm</button>
+            <button type="button" class="quick-btn" data-value="18:00" onclick="setQuickTime('dueTime','18:00')">6pm</button>
+            <button type="button" class="quick-btn" data-value="23:59" onclick="setQuickTime('dueTime','23:59')">End of Day</button>
+          </div>
+        </div>
+        <div class="form-group datetime-card" style="grid-column: 1 / -1">
+          <label>🔔 Reminder</label>
+          <div class="datetime-row">
+            <input type="date" id="reminderDate" oninput="syncChipActive('reminderDate')">
+            <input type="time" id="reminderTime" oninput="syncChipActive('reminderTime')">
+          </div>
+          <span class="quick-group-label">Date</span>
+          <div class="quick-row" data-for="reminderDate">
+            <button type="button" class="quick-btn" data-kind="today" onclick="setQuickDateKind('reminderDate','today')">Today</button>
+            <button type="button" class="quick-btn" data-kind="tomorrow" onclick="setQuickDateKind('reminderDate','tomorrow')">Tomorrow</button>
+            <button type="button" class="quick-btn" data-kind="weekend" onclick="setQuickDateKind('reminderDate','weekend')">This Weekend</button>
+            <button type="button" class="quick-btn" data-kind="nextweek" onclick="setQuickDateKind('reminderDate','nextweek')">Next Week</button>
+          </div>
+          <span class="quick-group-label">Time</span>
+          <div class="quick-row" data-for="reminderTime">
+            <button type="button" class="quick-btn" data-value="08:00" onclick="setQuickTime('reminderTime','08:00')">8am</button>
+            <button type="button" class="quick-btn" data-value="10:00" onclick="setQuickTime('reminderTime','10:00')">10am</button>
+            <button type="button" class="quick-btn" data-value="12:00" onclick="setQuickTime('reminderTime','12:00')">12pm</button>
+            <button type="button" class="quick-btn" data-value="14:30" onclick="setQuickTime('reminderTime','14:30')">2:30pm</button>
+            <button type="button" class="quick-btn" data-value="16:30" onclick="setQuickTime('reminderTime','16:30')">4:30pm</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="context">📍 Context</label>
+          <input type="text" id="context" placeholder="@Computer, @Phone, @Home">
+        </div>
+        <div class="form-group" id="linkedEmailGroup" style="display:none;grid-column: 1 / -1">
+          <label>🔗 Linked Email</label>
+          <a id="linkedEmailLink" href="#" target="_blank" rel="noopener">Open in Outlook ↗</a>
+        </div>
+        <div class="form-group" style="grid-column: 1 / -1">
+          <label for="notes">🗒️ Notes</label>
+          <textarea id="notes" rows="3" placeholder="Additional details..."></textarea>
         </div>
       </div>
-      <div class="form-group">
-        <label for="dueTime">🕐 Due Time</label>
-        <input type="time" id="dueTime">
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn-primary" id="saveBtn" onclick="saveTask()">💾 Save Task</button>
       </div>
-      <div class="form-group">
-        <label for="reminderDate">🔔 Reminder Date</label>
-        <input type="date" id="reminderDate">
-        <div class="quick-row">
-          <button type="button" class="quick-btn" onclick="setQuickDate('reminderDate',1)">+1d</button>
-          <button type="button" class="quick-btn" onclick="setQuickDate('reminderDate',2)">+2d</button>
-          <button type="button" class="quick-btn" onclick="setQuickDate('reminderDate',3)">+3d</button>
-          <button type="button" class="quick-btn" onclick="setQuickDate('reminderDate',4)">+4d</button>
-          <button type="button" class="quick-btn" onclick="setQuickDate('reminderDate',5)">+5d</button>
-        </div>
-      </div>
-      <div class="form-group">
-        <label for="reminderTime">⏰ Reminder Time</label>
-        <input type="time" id="reminderTime">
-        <div class="quick-row">
-          <button type="button" class="quick-btn" onclick="setQuickTime('reminderTime','08:00')">8am</button>
-          <button type="button" class="quick-btn" onclick="setQuickTime('reminderTime','10:00')">10am</button>
-          <button type="button" class="quick-btn" onclick="setQuickTime('reminderTime','12:00')">12pm</button>
-          <button type="button" class="quick-btn" onclick="setQuickTime('reminderTime','14:30')">2:30pm</button>
-          <button type="button" class="quick-btn" onclick="setQuickTime('reminderTime','16:30')">4:30pm</button>
-        </div>
-      </div>
-      <div class="form-group">
-        <label for="context">📍 Context</label>
-        <input type="text" id="context" placeholder="@Computer, @Phone, @Home">
-      </div>
-      <div class="form-group" id="linkedEmailGroup" style="display:none;grid-column: 1 / -1">
-        <label>🔗 Linked Email</label>
-        <a id="linkedEmailLink" href="#" target="_blank" rel="noopener">Open in Outlook ↗</a>
-      </div>
-      <div class="form-group" style="grid-column: 1 / -1">
-        <label for="notes">🗒️ Notes</label>
-        <textarea id="notes" rows="3" placeholder="Additional details..."></textarea>
-      </div>
-    </div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btn-primary" id="saveBtn" onclick="saveTask()">💾 Save Task</button>
     </div>
   </div>
 
@@ -397,8 +422,18 @@ function editTask(id) {
   }
   document.getElementById('formMode').textContent = `✏️ Editing: "${task.title}"`;
   document.getElementById('editBadge').style.display = 'inline';
-  document.getElementById('cancelEditBtn').style.display = 'inline';
+  openForm();
+  ['dueDate', 'dueTime', 'reminderDate', 'reminderTime'].forEach(syncChipActive);
   document.querySelector('.form-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function openForm() {
+  document.getElementById('formContainer').classList.add('expanded');
+  document.getElementById('taskTitle').focus();
+}
+
+function closeForm() {
+  document.getElementById('formContainer').classList.remove('expanded');
 }
 
 function cancelEdit() {
@@ -413,18 +448,48 @@ function cancelEdit() {
   document.getElementById('linkedEmailGroup').style.display = 'none';
   document.getElementById('formMode').textContent = '➕ Add New Task';
   document.getElementById('editBadge').style.display = 'none';
-  document.getElementById('cancelEditBtn').style.display = 'none';
+  ['dueDate', 'dueTime', 'reminderDate', 'reminderTime'].forEach(syncChipActive);
+  closeForm();
 }
 
-// Quick-pick helpers for the date/time inputs above.
-function setQuickDate(fieldId, daysFromNow) {
+// Quick-pick helpers for the date/time inputs above — Apple-style smart chips.
+function toISODate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function upcomingWeekend() {
   const d = new Date();
-  d.setDate(d.getDate() + daysFromNow);
-  const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  document.getElementById(fieldId).value = iso;
+  const day = d.getDay(); // 0 Sun .. 6 Sat
+  if (day === 0 || day === 6) return d; // already the weekend
+  d.setDate(d.getDate() + (6 - day));
+  return d;
+}
+function startOfNextWeek() {
+  const d = new Date();
+  const day = d.getDay();
+  d.setDate(d.getDate() + ((8 - day) % 7 || 7)); // next Monday
+  return d;
+}
+function computeKindValue(kind) {
+  const d = new Date();
+  if (kind === 'today') return toISODate(d);
+  if (kind === 'tomorrow') { d.setDate(d.getDate() + 1); return toISODate(d); }
+  if (kind === 'weekend') return toISODate(upcomingWeekend());
+  if (kind === 'nextweek') return toISODate(startOfNextWeek());
+}
+function setQuickDateKind(fieldId, kind) {
+  document.getElementById(fieldId).value = computeKindValue(kind);
+  syncChipActive(fieldId);
 }
 function setQuickTime(fieldId, value) {
   document.getElementById(fieldId).value = value;
+  syncChipActive(fieldId);
+}
+function syncChipActive(fieldId) {
+  const input = document.getElementById(fieldId);
+  document.querySelectorAll(`.quick-row[data-for="${fieldId}"] .quick-btn`).forEach(btn => {
+    const target = btn.dataset.kind ? computeKindValue(btn.dataset.kind) : btn.dataset.value;
+    btn.classList.toggle('active', !!input.value && input.value === target);
+  });
 }
 
 function saveTask() {
