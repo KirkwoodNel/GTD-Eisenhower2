@@ -57,9 +57,11 @@
   .q4 .q-header{background:var(--q4)}
   .q-desc{font-size:.7rem;opacity:.9;font-weight:400;margin-top:2px}
 
-  .task-list{padding:12px;min-height:60px}
+  .task-list{padding:12px;min-height:60px;transition:background .15s,box-shadow .15s;border-radius:8px}
+  .task-list.drag-over{background:#eef6ff;box-shadow:inset 0 0 0 2px #6c5ce7}
   .task{padding:10px;border-radius:8px;background:#f8f9fa;margin-bottom:8px;transition:.2s;border-left:4px solid #ddd;cursor:pointer}
   .task:active{transform:scale(0.98)}
+  .task.dragging{opacity:.4}
   .task.q1{border-left-color:var(--q1)}
   .task.q2{border-left-color:var(--q2)}
   .task.q3{border-left-color:var(--q3)}
@@ -80,6 +82,9 @@
   .move-btn:hover{background:#d5d9dc}
   .delete-btn{background:none;border:none;color:#e17055;cursor:pointer;font-size:0.9rem;padding:2px;margin-left:auto}
   .empty{text-align:center;color:#b2bec3;padding:16px;font-style:italic;font-size:0.85rem}
+  .toggle-row{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:16px}
+  .toggle-row label{display:flex;align-items:center;gap:6px;font-size:0.8rem;color:#636e72;cursor:pointer;user-select:none}
+  .toggle-checkbox{width:16px;height:16px;padding:0;border-radius:4px;accent-color:#6c5ce7}
 
   @media(max-width:600px){
     .gtd-row,.matrix-row{grid-template-columns:1fr}
@@ -93,6 +98,12 @@
   <h1>✏️ Edit & Stage — Smart GTD × Eisenhower</h1>
   <p class="subtitle">Tap any task to edit · Move between sections instantly</p>
   <p id="syncStatus" style="text-align:center;font-size:0.75rem;color:#b2bec3;margin-bottom:12px"></p>
+  <div class="toggle-row">
+    <label>
+      <input type="checkbox" id="hideCompletedToggle" class="toggle-checkbox" onchange="toggleHideCompleted()">
+      🙈 Hide completed tasks
+    </label>
+  </div>
 
   <div class="recommend">
     <h2>🎯 What to Do Next — Smart Priority Ranking</h2>
@@ -158,19 +169,19 @@
   <div class="gtd-row">
     <div class="gtd-column gtd-inbox">
       <div class="gtd-header">📥 Inbox</div>
-      <div class="task-list" id="gtd-inbox"></div>
+      <div class="task-list" id="gtd-inbox" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'gtd-inbox')"></div>
     </div>
     <div class="gtd-column gtd-next">
       <div class="gtd-header">▶️ Next Actions</div>
-      <div class="task-list" id="gtd-next"></div>
+      <div class="task-list" id="gtd-next" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'gtd-next')"></div>
     </div>
     <div class="gtd-column gtd-wait">
       <div class="gtd-header">⏳ Waiting For</div>
-      <div class="task-list" id="gtd-wait"></div>
+      <div class="task-list" id="gtd-wait" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'gtd-wait')"></div>
     </div>
     <div class="gtd-column gtd-someday">
       <div class="gtd-header">💭 Someday/Maybe</div>
-      <div class="task-list" id="gtd-someday"></div>
+      <div class="task-list" id="gtd-someday" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'gtd-someday')"></div>
     </div>
   </div>
 
@@ -178,19 +189,19 @@
   <div class="matrix-row">
     <div class="quadrant q1">
       <div class="q-header">DO NOW<div class="q-desc">Urgent & Important</div></div>
-      <div class="task-list" id="list-q1"></div>
+      <div class="task-list" id="list-q1" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'list-q1')"></div>
     </div>
     <div class="quadrant q2">
       <div class="q-header">SCHEDULE<div class="q-desc">Not Urgent & Important</div></div>
-      <div class="task-list" id="list-q2"></div>
+      <div class="task-list" id="list-q2" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'list-q2')"></div>
     </div>
     <div class="quadrant q3">
       <div class="q-header">DELEGATE<div class="q-desc">Urgent & Not Important</div></div>
-      <div class="task-list" id="list-q3"></div>
+      <div class="task-list" id="list-q3" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'list-q3')"></div>
     </div>
     <div class="quadrant q4">
       <div class="q-header">ELIMINATE<div class="q-desc">Not Urgent & Not Important</div></div>
-      <div class="task-list" id="list-q4"></div>
+      <div class="task-list" id="list-q4" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'list-q4')"></div>
     </div>
   </div>
 </div>
@@ -220,6 +231,8 @@ function calculateUrgencyScore(task) {
 
 let tasks = [];
 let editingId = null;
+let draggedId = null;
+let hideCompleted = localStorage.getItem('hideCompleted') === 'true';
 
 // --- Sync with Microsoft To Do via the Cloudflare Worker ---
 // WORKER_URL / WORKER_SECRET identify this page to the Worker. Since this is a static public
@@ -322,7 +335,7 @@ async function pollServer() {
 }
 
 function editTask(id) {
-  const task = tasks.find(t => t.id === id);
+  const task = tasks.find(t => String(t.id) === String(id));
   if (!task) return;
   editingId = id;
   document.getElementById('taskTitle').value = task.title;
@@ -366,10 +379,10 @@ function saveTask() {
     context: document.getElementById('context').value.trim()
   };
   if (editingId) {
-    const idx = tasks.findIndex(t => t.id === editingId);
+    const idx = tasks.findIndex(t => String(t.id) === String(editingId));
     if (idx !== -1) { tasks[idx] = { ...tasks[idx], ...taskData }; markDirty(tasks[idx]); }
   } else {
-    const task = { id: Date.now(), ...taskData, completed: false };
+    const task = { id: String(Date.now()), ...taskData, completed: false };
     markDirty(task);
     tasks.unshift(task);
   }
@@ -377,20 +390,53 @@ function saveTask() {
 }
 
 function moveToGTD(id, newStatus) {
-  const task = tasks.find(t => t.id === id);
+  const task = tasks.find(t => String(t.id) === String(id));
   if (task) { task.gtdStatus = newStatus; markDirty(task); saveTasks(); renderAll(); }
 }
 function moveToPriority(id, newPriority) {
-  const task = tasks.find(t => t.id === id);
+  const task = tasks.find(t => String(t.id) === String(id));
   if (task) { task.priority = newPriority; markDirty(task); saveTasks(); renderAll(); }
 }
 
+// --- Drag & drop between GTD columns / Eisenhower quadrants (desktop mouse drag) ---
+function handleDragStart(e, id) {
+  draggedId = id;
+  e.dataTransfer.effectAllowed = 'move';
+  try { e.dataTransfer.setData('text/plain', id); } catch (err) {}
+  e.target.classList.add('dragging');
+}
+function handleDragEnd(e) {
+  e.target.classList.remove('dragging');
+  document.querySelectorAll('.task-list.drag-over').forEach(el => el.classList.remove('drag-over'));
+  draggedId = null;
+}
+function handleDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('drag-over');
+}
+function handleDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+function handleDrop(e, targetListId) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  const id = draggedId || e.dataTransfer.getData('text/plain');
+  draggedId = null;
+  if (!id) return;
+  if (targetListId.startsWith('gtd-')) {
+    moveToGTD(id, targetListId.slice(4));
+  } else if (targetListId.startsWith('list-')) {
+    moveToPriority(id, targetListId.slice(5));
+  }
+}
+
 function toggleComplete(id) {
-  const task = tasks.find(t => t.id === id);
+  const task = tasks.find(t => String(t.id) === String(id));
   if (task) { task.completed = !task.completed; markDirty(task); saveTasks(); renderAll(); }
 }
 function deleteTask(id) {
-  if (confirm('Delete this task?')) { tasks = tasks.filter(t => t.id !== id); saveTasks(); renderAll(); }
+  if (confirm('Delete this task?')) { tasks = tasks.filter(t => String(t.id) !== String(id)); saveTasks(); renderAll(); }
 }
 function formatDateDisplay(d) {
   if (!d) return '';
@@ -421,7 +467,7 @@ function renderRecommendations() {
       <div style="font-size:0.8rem;color:#666">
         ${top.context?`📍 ${top.context}`:''}
         ${top.dueDate?` | 📅 Due: ${formatDateDisplay(top.dueDate)} ${top.dueTime||''}`:''}
-        <br><em>Priority: ${top.priority.toUpperCase()} · Status: ${top.gtdStatus} · <a href="#" onclick="editTask(${top.id});return false;">Edit</a></em>
+        <br><em>Priority: ${top.priority.toUpperCase()} · Status: ${top.gtdStatus} · <a href="#" onclick="editTask('${top.id}');return false;">Edit</a></em>
       </div>
     </div>
     <div style="margin-top:10px">
@@ -429,7 +475,7 @@ function renderRecommendations() {
       <div class="score-list">
         ${scored.slice(1,5).map((t,i) => `
           <div class="score-item">
-            <span onclick="editTask(${t.id})" style="cursor:pointer">${i+2}. ${t.title}</span>
+            <span onclick="editTask('${t.id}')" style="cursor:pointer">${i+2}. ${t.title}</span>
             <span class="score-value ${getScoreClass(t.score)}">${t.score}</span>
           </div>
         `).join('')}
@@ -444,9 +490,9 @@ function renderRecommendations() {
 function taskHTML(task) {
   const score = calculateUrgencyScore(task);
   return `
-    <div class="task ${task.priority} ${task.completed?'completed':''}" onclick="editTask(${task.id})">
+    <div class="task ${task.priority} ${task.completed?'completed':''}" draggable="true" ondragstart="handleDragStart(event,'${task.id}')" ondragend="handleDragEnd(event)" onclick="editTask('${task.id}')">
       <div class="task-row">
-        <div class="checkbox ${task.completed?'checked':''}" onclick="event.stopPropagation();toggleComplete(${task.id})">
+        <div class="checkbox ${task.completed?'checked':''}" draggable="false" onclick="event.stopPropagation();toggleComplete('${task.id}')">
           ${task.completed?'✓':''}
         </div>
         <div class="task-text">
@@ -458,34 +504,41 @@ function taskHTML(task) {
             ${task.context?`<span class="meta-tag">📍 ${task.context}</span>`:''}
           </div>
         </div>
-        <div class="task-actions" onclick="event.stopPropagation()">
+        <div class="task-actions" draggable="false" onclick="event.stopPropagation()">
           <div class="move-row">
-            <button class="move-btn" title="Move to Inbox" onclick="moveToGTD(${task.id},'inbox')">📥</button>
-            <button class="move-btn" title="Move to Next" onclick="moveToGTD(${task.id},'next')">▶️</button>
-            <button class="move-btn" title="Move to Waiting" onclick="moveToGTD(${task.id},'wait')">⏳</button>
-            <button class="move-btn" title="Move to Someday" onclick="moveToGTD(${task.id},'someday')">💭</button>
+            <button class="move-btn" title="Move to Inbox" onclick="moveToGTD('${task.id}','inbox')">📥</button>
+            <button class="move-btn" title="Move to Next" onclick="moveToGTD('${task.id}','next')">▶️</button>
+            <button class="move-btn" title="Move to Waiting" onclick="moveToGTD('${task.id}','wait')">⏳</button>
+            <button class="move-btn" title="Move to Someday" onclick="moveToGTD('${task.id}','someday')">💭</button>
           </div>
           <div class="move-row">
-            <button class="move-btn" title="Q1 Do Now" onclick="moveToPriority(${task.id},'q1')">🔴</button>
-            <button class="move-btn" title="Q2 Schedule" onclick="moveToPriority(${task.id},'q2')">🔵</button>
-            <button class="move-btn" title="Q3 Delegate" onclick="moveToPriority(${task.id},'q3')">🟡</button>
-            <button class="move-btn" title="Q4 Eliminate" onclick="moveToPriority(${task.id},'q4')">⚪</button>
+            <button class="move-btn" title="Q1 Do Now" onclick="moveToPriority('${task.id}','q1')">🔴</button>
+            <button class="move-btn" title="Q2 Schedule" onclick="moveToPriority('${task.id}','q2')">🔵</button>
+            <button class="move-btn" title="Q3 Delegate" onclick="moveToPriority('${task.id}','q3')">🟡</button>
+            <button class="move-btn" title="Q4 Eliminate" onclick="moveToPriority('${task.id}','q4')">⚪</button>
           </div>
-          <button class="delete-btn" title="Delete" onclick="deleteTask(${task.id})">🗑️</button>
+          <button class="delete-btn" title="Delete" onclick="deleteTask('${task.id}')">🗑️</button>
         </div>
       </div>
     </div>
   `;
 }
 
+function toggleHideCompleted() {
+  hideCompleted = document.getElementById('hideCompletedToggle').checked;
+  localStorage.setItem('hideCompleted', hideCompleted);
+  renderAll();
+}
+
 function renderAll() {
   renderRecommendations();
+  const visible = hideCompleted ? tasks.filter(t => !t.completed) : tasks;
   ['inbox','next','wait','someday'].forEach(bin => {
-    const filtered = tasks.filter(t => t.gtdStatus === bin);
+    const filtered = visible.filter(t => t.gtdStatus === bin);
     document.getElementById(`gtd-${bin}`).innerHTML = filtered.length ? filtered.map(taskHTML).join('') : '<p class="empty">All clear ✅</p>';
   });
   ['q1','q2','q3','q4'].forEach(q => {
-    const filtered = tasks.filter(t => t.priority === q);
+    const filtered = visible.filter(t => t.priority === q);
     document.getElementById(`list-${q}`).innerHTML = filtered.length ? filtered.map(taskHTML).join('') : '<p class="empty">No tasks ✅</p>';
   });
 }
@@ -503,6 +556,7 @@ function checkReminders() {
 }
 if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
 
+document.getElementById('hideCompletedToggle').checked = hideCompleted;
 initTasks().then(renderAll);
 setInterval(checkReminders, 30000);
 setInterval(pollServer, 60000);
