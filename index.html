@@ -67,6 +67,7 @@
   .task.q3{border-left-color:var(--q3)}
   .task.q4{border-left-color:var(--q4)}
   .task.completed{opacity:.6;border-left-color:var(--done)}
+  .task.just-completed{opacity:1;border-left-color:#2ecc71;background:#eafaf1}
   .task.completed .task-text{text-decoration:line-through;color:var(--done)}
   .task-row{display:flex;align-items:flex-start;gap:8px}
   .checkbox{width:22px;height:22px;border-radius:6px;border:2px solid #ccc;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-top:2px;flex-shrink:0;transition:.2s}
@@ -349,7 +350,7 @@ function editTask(id) {
   document.getElementById('formMode').textContent = `✏️ Editing: "${task.title}"`;
   document.getElementById('editBadge').style.display = 'inline';
   document.getElementById('cancelEditBtn').style.display = 'inline';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  document.querySelector('.form-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function cancelEdit() {
@@ -431,9 +432,25 @@ function handleDrop(e, targetListId) {
   }
 }
 
-function toggleComplete(id) {
+function toggleComplete(id, checkboxEl) {
   const task = tasks.find(t => String(t.id) === String(id));
-  if (task) { task.completed = !task.completed; markDirty(task); saveTasks(); renderAll(); }
+  if (!task) return;
+  const becomingComplete = !task.completed;
+  task.completed = becomingComplete;
+  markDirty(task);
+  saveTasks();
+
+  const taskEl = checkboxEl ? checkboxEl.closest('.task') : null;
+  if (becomingComplete && taskEl) {
+    // Give instant visual feedback (checked box, green flash) and hold for a beat before the
+    // list re-renders - otherwise a completed task can vanish the instant it's checked.
+    taskEl.classList.add('completed', 'just-completed');
+    checkboxEl.classList.add('checked');
+    checkboxEl.textContent = '✓';
+    setTimeout(renderAll, 2000);
+  } else {
+    renderAll();
+  }
 }
 function deleteTask(id) {
   if (confirm('Delete this task?')) { tasks = tasks.filter(t => String(t.id) !== String(id)); saveTasks(); renderAll(); }
@@ -492,7 +509,7 @@ function taskHTML(task) {
   return `
     <div class="task ${task.priority} ${task.completed?'completed':''}" draggable="true" ondragstart="handleDragStart(event,'${task.id}')" ondragend="handleDragEnd(event)" onclick="editTask('${task.id}')">
       <div class="task-row">
-        <div class="checkbox ${task.completed?'checked':''}" draggable="false" onclick="event.stopPropagation();toggleComplete('${task.id}')">
+        <div class="checkbox ${task.completed?'checked':''}" draggable="false" onclick="event.stopPropagation();toggleComplete('${task.id}', this)">
           ${task.completed?'✓':''}
         </div>
         <div class="task-text">
