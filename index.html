@@ -79,6 +79,11 @@
   .count-badge{font-weight:600;opacity:0.85;margin-left:3px}
   .total-count{text-align:center;font-weight:700;color:#2d3436;margin-bottom:4px;font-size:1rem}
   .rule135-count{text-align:center;font-weight:600;color:#6c5ce7;margin-bottom:16px;font-size:0.85rem}
+  .rule135-popup{position:fixed;top:70px;left:16px;right:16px;margin:0 auto;max-width:480px;z-index:1000;background:linear-gradient(135deg,#6c5ce7,#a29bfe);color:#fff;padding:12px 14px 12px 18px;border-radius:14px;box-shadow:0 10px 28px rgba(108,92,231,.45);display:flex;align-items:center;gap:12px;font-size:0.85rem;font-weight:600;animation:rule135PopIn .3s ease}
+  .rule135-popup[hidden]{display:none}
+  .rule135-popup-close{background:rgba(255,255,255,.25);border:none;color:#fff;border-radius:50%;width:24px;height:24px;font-size:0.75rem;cursor:pointer;flex-shrink:0;margin-left:auto}
+  .rule135-popup-close:hover{background:rgba(255,255,255,.4)}
+  @keyframes rule135PopIn{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:translateY(0)}}
   .gtd-inbox .gtd-header{background:var(--gtd-inbox)}
   .gtd-next .gtd-header{background:var(--gtd-next)}
   .gtd-wait .gtd-header{background:var(--gtd-wait)}
@@ -145,6 +150,10 @@
 </style>
 </head>
 <body>
+<div id="rule135Popup" class="rule135-popup" hidden>
+  <span id="rule135PopupText"></span>
+  <button type="button" class="rule135-popup-close" onclick="dismissRule135Popup()">✕</button>
+</div>
 <div class="container">
   <h1>✏️ Edit & Stage — Smart GTD × Eisenhower</h1>
   <p class="subtitle">Tap any task to edit · Move between sections instantly</p>
@@ -194,6 +203,15 @@
             <option value="q2">🔵 Q2 — Not Urgent & Important</option>
             <option value="q3">🟡 Q3 — Urgent & Not Important</option>
             <option value="q4">⚪ Q4 — Not Urgent & Not Important</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="taskSize">🧠 1-3-5 Size</label>
+          <select id="taskSize">
+            <option value="">— None —</option>
+            <option value="big">🟣 Big · max 1</option>
+            <option value="medium">🟪 Medium · max 3</option>
+            <option value="small">🔹 Small · max 5</option>
           </select>
         </div>
         <div class="form-group datetime-card" style="grid-column: 1 / -1">
@@ -542,6 +560,7 @@ function editTask(id) {
   document.getElementById('taskTitle').value = task.title;
   document.getElementById('gtdStatus').value = task.gtdStatus;
   document.getElementById('priority').value = task.priority;
+  document.getElementById('taskSize').value = task.size || '';
   document.getElementById('dueDate').value = task.dueDate || '';
   document.getElementById('dueTime').value = task.dueTime || '';
   document.getElementById('reminderDate').value = task.reminderDate || '';
@@ -573,6 +592,7 @@ function closeForm() {
 function cancelEdit() {
   editingId = null;
   document.getElementById('taskTitle').value = '';
+  document.getElementById('taskSize').value = '';
   document.getElementById('dueDate').value = '';
   document.getElementById('dueTime').value = '';
   document.getElementById('reminderDate').value = '';
@@ -635,10 +655,14 @@ function matchReminderToDue() {
 function saveTask() {
   const title = document.getElementById('taskTitle').value.trim();
   if (!title) return alert('⚠️ Please enter a task!');
+  const size = document.getElementById('taskSize').value;
+  const checkId = editingId || String(Date.now());
+  if (size && !canAssignSize(checkId, size)) { sizeCapAlert(size); return; }
   const taskData = {
     title,
     gtdStatus: document.getElementById('gtdStatus').value,
     priority: document.getElementById('priority').value,
+    size: size || undefined,
     dueDate: document.getElementById('dueDate').value,
     dueTime: document.getElementById('dueTime').value,
     reminderDate: document.getElementById('reminderDate').value,
@@ -650,7 +674,7 @@ function saveTask() {
     const idx = tasks.findIndex(t => String(t.id) === String(editingId));
     if (idx !== -1) { tasks[idx] = { ...tasks[idx], ...taskData }; markDirty(tasks[idx]); }
   } else {
-    const task = { id: String(Date.now()), ...taskData, completed: false };
+    const task = { id: checkId, ...taskData, completed: false };
     markDirty(task);
     tasks.unshift(task);
   }
@@ -666,17 +690,51 @@ function moveToPriority(id, newPriority) {
   if (task) { task.priority = newPriority; markDirty(task); saveTasks(); delete expandedPills[id]; renderAll(); }
 }
 const SIZE_CAPS = { big: 1, medium: 3, small: 5 };
+function canAssignSize(id, newSize) {
+  if (!newSize) return true;
+  const inUse = tasks.filter(t => !t.completed && t.size === newSize && String(t.id) !== String(id)).length;
+  return inUse < SIZE_CAPS[newSize];
+}
+function sizeCapAlert(newSize) {
+  alert(`⚠️ The ADHD 1-3-5 rule allows at most ${SIZE_CAPS[newSize]} "${newSize}" task${SIZE_CAPS[newSize] > 1 ? 's' : ''} at a time. Finish or reassign one first.`);
+}
+
+// --- Pop-up reminder when a 1-3-5 bucket has spare room ---
+let dismissedRule135Signature = null;
+function checkRule135Popup(counts) {
+  const gaps = [];
+  if (counts.big < SIZE_CAPS.big) gaps.push(`${SIZE_CAPS.big - counts.big} Big`);
+  if (counts.medium < SIZE_CAPS.medium) gaps.push(`${SIZE_CAPS.medium - counts.medium} Medium`);
+  if (counts.small < SIZE_CAPS.small) gaps.push(`${SIZE_CAPS.small - counts.small} Small`);
+  const popup = document.getElementById('rule135Popup');
+  if (gaps.length === 0) {
+    popup.hidden = true;
+    dismissedRule135Signature = null; // any future gap should pop up fresh
+    return;
+  }
+  const signature = `${counts.big}|${counts.medium}|${counts.small}`;
+  if (dismissedRule135Signature === signature) {
+    popup.hidden = true;
+    return;
+  }
+  popup.dataset.signature = signature;
+  document.getElementById('rule135PopupText').textContent =
+    `🧠 1-3-5 rule: you have room for ${gaps.join(' + ')} more — add one?`;
+  popup.hidden = false;
+}
+function dismissRule135Popup() {
+  const popup = document.getElementById('rule135Popup');
+  dismissedRule135Signature = popup.dataset.signature || null;
+  popup.hidden = true;
+}
 function moveToSize(id, newSize) {
   const task = tasks.find(t => String(t.id) === String(id));
   if (!task) return;
-  if (task.size !== newSize) {
-    const inUse = tasks.filter(t => !t.completed && t.size === newSize && String(t.id) !== String(id)).length;
-    if (inUse >= SIZE_CAPS[newSize]) {
-      alert(`⚠️ The ADHD 1-3-5 rule allows at most ${SIZE_CAPS[newSize]} "${newSize}" task${SIZE_CAPS[newSize] > 1 ? 's' : ''} at a time. Finish or reassign one first.`);
-      delete expandedPills[id];
-      renderAll();
-      return;
-    }
+  if (task.size !== newSize && !canAssignSize(id, newSize)) {
+    sizeCapAlert(newSize);
+    delete expandedPills[id];
+    renderAll();
+    return;
   }
   task.size = newSize; markDirty(task); saveTasks(); delete expandedPills[id]; renderAll();
 }
@@ -941,6 +999,7 @@ function renderAll() {
   const small = active.filter(t => t.size === 'small').length;
   document.getElementById('rule135Count').innerHTML =
     `🎯 1-3-5 Focus: <strong>${big}/1</strong> Big · <strong>${medium}/3</strong> Medium · <strong>${small}/5</strong> Small`;
+  checkRule135Popup({ big, medium, small });
 
   ['inbox','next','wait','someday'].forEach(bin => {
     const bucket = `gtd-${bin}`;
