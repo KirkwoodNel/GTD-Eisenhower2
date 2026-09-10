@@ -37,8 +37,12 @@
   .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
   .form-group{display:flex;flex-direction:column;gap:4px}
   label{font-size:0.8rem;font-weight:600;color:#444;margin-left:2px}
-  input,select,button{padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px}
+  input,select,button,textarea{padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px}
+  textarea{font-family:inherit;resize:vertical;width:100%}
   button{border:none;cursor:pointer;font-weight:600;transition:.2s}
+  .quick-row{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+  .quick-btn{padding:4px 8px;font-size:0.7rem;font-weight:600;border-radius:6px;background:#f1f0fe;color:#6c5ce7;border:1px solid #ddd6fe}
+  .quick-btn:hover{background:#e0defc}
   .btn-primary{background:linear-gradient(135deg,#6c5ce7,#a29bfe);color:#fff;margin-top:8px}
   .btn-primary:hover{transform:translateY(-1px)}
   .btn-reset{background:#e0e0e0;color:#555;margin-top:8px}
@@ -76,6 +80,11 @@
   .task-title{font-weight:600;margin-bottom:2px;font-size:0.9rem}
   .task-meta{font-size:.7rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px;margin-top:3px}
   .meta-tag{display:inline-flex;align-items:center;gap:2px;padding:2px 5px;border-radius:4px;background:#e9ecef;font-size:0.65rem}
+  .meta-tag[href]{text-decoration:none;color:#555;cursor:pointer}
+  .meta-tag[href]:hover{background:#d5d9dc}
+  .task-notes-preview{font-size:.7rem;color:var(--muted);margin-top:4px;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #linkedEmailLink{color:#6c5ce7;font-weight:600;text-decoration:none;font-size:0.85rem}
+  #linkedEmailLink:hover{text-decoration:underline}
 
   .task-actions{display:flex;flex-direction:column;gap:4px;margin-left:auto}
   .move-row{display:flex;gap:3px}
@@ -143,6 +152,13 @@
       <div class="form-group">
         <label for="dueDate">📅 Due Date</label>
         <input type="date" id="dueDate">
+        <div class="quick-row">
+          <button type="button" class="quick-btn" onclick="setQuickDate('dueDate',1)">+1d</button>
+          <button type="button" class="quick-btn" onclick="setQuickDate('dueDate',2)">+2d</button>
+          <button type="button" class="quick-btn" onclick="setQuickDate('dueDate',3)">+3d</button>
+          <button type="button" class="quick-btn" onclick="setQuickDate('dueDate',4)">+4d</button>
+          <button type="button" class="quick-btn" onclick="setQuickDate('dueDate',5)">+5d</button>
+        </div>
       </div>
       <div class="form-group">
         <label for="dueTime">🕐 Due Time</label>
@@ -151,14 +167,36 @@
       <div class="form-group">
         <label for="reminderDate">🔔 Reminder Date</label>
         <input type="date" id="reminderDate">
+        <div class="quick-row">
+          <button type="button" class="quick-btn" onclick="setQuickDate('reminderDate',1)">+1d</button>
+          <button type="button" class="quick-btn" onclick="setQuickDate('reminderDate',2)">+2d</button>
+          <button type="button" class="quick-btn" onclick="setQuickDate('reminderDate',3)">+3d</button>
+          <button type="button" class="quick-btn" onclick="setQuickDate('reminderDate',4)">+4d</button>
+          <button type="button" class="quick-btn" onclick="setQuickDate('reminderDate',5)">+5d</button>
+        </div>
       </div>
       <div class="form-group">
         <label for="reminderTime">⏰ Reminder Time</label>
         <input type="time" id="reminderTime">
+        <div class="quick-row">
+          <button type="button" class="quick-btn" onclick="setQuickTime('reminderTime','08:00')">8am</button>
+          <button type="button" class="quick-btn" onclick="setQuickTime('reminderTime','10:00')">10am</button>
+          <button type="button" class="quick-btn" onclick="setQuickTime('reminderTime','12:00')">12pm</button>
+          <button type="button" class="quick-btn" onclick="setQuickTime('reminderTime','14:30')">2:30pm</button>
+          <button type="button" class="quick-btn" onclick="setQuickTime('reminderTime','16:30')">4:30pm</button>
+        </div>
       </div>
       <div class="form-group">
         <label for="context">📍 Context</label>
         <input type="text" id="context" placeholder="@Computer, @Phone, @Home">
+      </div>
+      <div class="form-group" id="linkedEmailGroup" style="display:none;grid-column: 1 / -1">
+        <label>🔗 Linked Email</label>
+        <a id="linkedEmailLink" href="#" target="_blank" rel="noopener">Open in Outlook ↗</a>
+      </div>
+      <div class="form-group" style="grid-column: 1 / -1">
+        <label for="notes">🗒️ Notes</label>
+        <textarea id="notes" rows="3" placeholder="Additional details..."></textarea>
       </div>
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -347,6 +385,13 @@ function editTask(id) {
   document.getElementById('reminderDate').value = task.reminderDate || '';
   document.getElementById('reminderTime').value = task.reminderTime || '';
   document.getElementById('context').value = task.context || '';
+  document.getElementById('notes').value = task.notes || '';
+  if (task.url) {
+    document.getElementById('linkedEmailLink').href = task.url;
+    document.getElementById('linkedEmailGroup').style.display = '';
+  } else {
+    document.getElementById('linkedEmailGroup').style.display = 'none';
+  }
   document.getElementById('formMode').textContent = `✏️ Editing: "${task.title}"`;
   document.getElementById('editBadge').style.display = 'inline';
   document.getElementById('cancelEditBtn').style.display = 'inline';
@@ -361,9 +406,22 @@ function cancelEdit() {
   document.getElementById('reminderDate').value = '';
   document.getElementById('reminderTime').value = '';
   document.getElementById('context').value = '';
+  document.getElementById('notes').value = '';
+  document.getElementById('linkedEmailGroup').style.display = 'none';
   document.getElementById('formMode').textContent = '➕ Add New Task';
   document.getElementById('editBadge').style.display = 'none';
   document.getElementById('cancelEditBtn').style.display = 'none';
+}
+
+// Quick-pick helpers for the date/time inputs above.
+function setQuickDate(fieldId, daysFromNow) {
+  const d = new Date();
+  d.setDate(d.getDate() + daysFromNow);
+  const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  document.getElementById(fieldId).value = iso;
+}
+function setQuickTime(fieldId, value) {
+  document.getElementById(fieldId).value = value;
 }
 
 function saveTask() {
@@ -377,7 +435,8 @@ function saveTask() {
     dueTime: document.getElementById('dueTime').value,
     reminderDate: document.getElementById('reminderDate').value,
     reminderTime: document.getElementById('reminderTime').value,
-    context: document.getElementById('context').value.trim()
+    context: document.getElementById('context').value.trim(),
+    notes: document.getElementById('notes').value.trim()
   };
   if (editingId) {
     const idx = tasks.findIndex(t => String(t.id) === String(editingId));
@@ -464,6 +523,9 @@ function getScoreClass(score) {
   if (score >= 40) return 'score-med';
   return 'score-low';
 }
+function truncate(str, n) {
+  return str.length > n ? str.slice(0, n - 1) + '…' : str;
+}
 
 function renderRecommendations() {
   const active = tasks.filter(t => !t.completed);
@@ -519,7 +581,9 @@ function taskHTML(task) {
           <div class="task-meta">
             ${task.dueDate?`<span class="meta-tag">📅 ${formatDateDisplay(task.dueDate)} ${task.dueTime||''}</span>`:''}
             ${task.context?`<span class="meta-tag">📍 ${task.context}</span>`:''}
+            ${task.url?`<a class="meta-tag" href="${task.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🔗 Email</a>`:''}
           </div>
+          ${task.notes?`<div class="task-notes-preview">🗒️ ${truncate(task.notes, 80)}</div>`:''}
         </div>
         <div class="task-actions" draggable="false" onclick="event.stopPropagation()">
           <div class="move-row">
