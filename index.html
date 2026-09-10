@@ -92,6 +92,7 @@
 <div class="container">
   <h1>✏️ Edit & Stage — Smart GTD × Eisenhower</h1>
   <p class="subtitle">Tap any task to edit · Move between sections instantly</p>
+  <p id="syncStatus" style="text-align:center;font-size:0.75rem;color:#b2bec3;margin-bottom:12px"></p>
 
   <div class="recommend">
     <h2>🎯 What to Do Next — Smart Priority Ranking</h2>
@@ -237,16 +238,100 @@ function calculateUrgencyScore(task) {
 let tasks = [];
 let editingId = null;
 
-function initTasks() {
-  const saved = localStorage.getItem('editStageTodo');
-  if (saved && JSON.parse(saved).length > 0) tasks = JSON.parse(saved);
-  else { tasks = [...EXAMPLE_TASKS]; saveTasks(); }
+// --- Sync with Microsoft To Do via the Cloudflare Worker ---
+// WORKER_URL / WORKER_SECRET identify this page to the Worker. Since this is a static public
+// page, the "secret" is really just an access token scoped to this one personal task list -
+// don't reuse it anywhere sensitive.
+const WORKER_URL = 'https://gtd-todo-sync.marknelson.workers.dev';
+const WORKER_SECRET = 'vr7Z_03UX1u0-gZCzGDc1_GuDcreVv_c8Et8ouv4I6g';
+let syncFailed = false;
+
+function updateSyncStatus() {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  el.textContent = syncFailed
+    ? '⚠️ Not synced with Microsoft To Do right now - working from the copy saved on this device'
+    : '🔄 Synced with Microsoft To Do';
 }
-function saveTasks() { localStorage.setItem('editStageTodo', JSON.stringify(tasks)); }
+
+async function fetchTasksFromServer() {
+  const resp = await fetch(`${WORKER_URL}/api/tasks`, {
+    headers: { Authorization: `Bearer ${WORKER_SECRET}` }
+  });
+  if (!resp.ok) throw new Error(`Worker GET failed: ${resp.status}`);
+  return resp.json();
+}
+
+async function pushTasksToServer() {
+  const resp = await fetch(`${WORKER_URL}/api/tasks`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${WORKER_SECRET}` },
+    body: JSON.stringify(tasks)
+  });
+  if (!resp.ok) throw new Error(`Worker PUT failed: ${resp.status}`);
+}
+
+async function initTasks() {
+  const cached = localStorage.getItem('editStageTodo');
+  if (cached) tasks = JSON.parse(cached); // show something instantly while we fetch
+
+  try {
+    const serverTasks = await fetchTasksFromServer();
+    if (serverTasks.length === 0 && (!cached || JSON.parse(cached).length === 0)) {
+      tasks = EXAMPLE_TASKS.map(t => ({ ...t, lastModified: new Date().toISOString(), source: 'app' }));
+      await saveTasks();
+    } else {
+      tasks = serverTasks;
+      localStorage.setItem('editStageTodo', JSON.stringify(tasks));
+    }
+    syncFailed = false; updateSyncStatus();
+  } catch (e) {
+    console.warn('Could not reach sync server, using local copy only:', e);
+    syncFailed = true; updateSyncStatus();
+    if (!cached) {
+      tasks = EXAMPLE_TASKS.map(t => ({ ...t, lastModified: new Date().toISOString(), source: 'app' }));
+    }
+  }
+}
+
+// Call this after touching any task's user-facing fields, so the sync job knows the app - not
+// Microsoft To Do - now holds the authoritative version.
+function markDirty(task) {
+  task.lastModified = new Date().toISOString();
+  task.source = 'app';
+}
+
+async function saveTasks() {
+  localStorage.setItem('editStageTodo', JSON.stringify(tasks)); // instant local cache
+  try {
+    await pushTasksToServer();
+    syncFailed = false;
+  } catch (e) {
+    console.warn('Sync push failed, will retry on next save:', e);
+    syncFailed = true;
+  }
+  updateSyncStatus();
+}
+
 function resetToDefaults() {
   if (confirm('Reset to example tasks? Your tasks will be replaced.')) {
-    tasks = EXAMPLE_TASKS.map(t => ({ ...t, id: Date.now() + Math.random() }));
+    tasks = EXAMPLE_TASKS.map(t => ({ ...t, id: Date.now() + Math.random(), lastModified: new Date().toISOString(), source: 'app' }));
     saveTasks(); renderAll(); cancelEdit();
+  }
+}
+
+// Pick up changes made elsewhere (a flagged email, or an edit in Microsoft To Do) without
+// requiring a page reload. Skipped while actively editing so it can't yank the form away.
+async function pollServer() {
+  if (editingId !== null) return;
+  try {
+    const serverTasks = await fetchTasksFromServer();
+    tasks = serverTasks;
+    localStorage.setItem('editStageTodo', JSON.stringify(tasks));
+    syncFailed = false; updateSyncStatus();
+    renderAll();
+  } catch (e) {
+    syncFailed = true; updateSyncStatus();
   }
 }
 
@@ -296,25 +381,27 @@ function saveTask() {
   };
   if (editingId) {
     const idx = tasks.findIndex(t => t.id === editingId);
-    if (idx !== -1) tasks[idx] = { ...tasks[idx], ...taskData };
+    if (idx !== -1) { tasks[idx] = { ...tasks[idx], ...taskData }; markDirty(tasks[idx]); }
   } else {
-    tasks.unshift({ id: Date.now(), ...taskData, completed: false });
+    const task = { id: Date.now(), ...taskData, completed: false };
+    markDirty(task);
+    tasks.unshift(task);
   }
   saveTasks(); renderAll(); cancelEdit();
 }
 
 function moveToGTD(id, newStatus) {
   const task = tasks.find(t => t.id === id);
-  if (task) { task.gtdStatus = newStatus; saveTasks(); renderAll(); }
+  if (task) { task.gtdStatus = newStatus; markDirty(task); saveTasks(); renderAll(); }
 }
 function moveToPriority(id, newPriority) {
   const task = tasks.find(t => t.id === id);
-  if (task) { task.priority = newPriority; saveTasks(); renderAll(); }
+  if (task) { task.priority = newPriority; markDirty(task); saveTasks(); renderAll(); }
 }
 
 function toggleComplete(id) {
   const task = tasks.find(t => t.id === id);
-  if (task) { task.completed = !task.completed; saveTasks(); renderAll(); }
+  if (task) { task.completed = !task.completed; markDirty(task); saveTasks(); renderAll(); }
 }
 function deleteTask(id) {
   if (confirm('Delete this task?')) { tasks = tasks.filter(t => t.id !== id); saveTasks(); renderAll(); }
@@ -430,9 +517,9 @@ function checkReminders() {
 }
 if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
 
-initTasks();
-renderAll();
+initTasks().then(renderAll);
 setInterval(checkReminders, 30000);
+setInterval(pollServer, 60000);
 </script>
 </body>
 </html>
