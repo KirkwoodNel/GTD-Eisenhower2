@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Edit & Stage — Smart GTD × Eisenhower To-Do</title>
+<title>GTD Eisenhower 1-3-5</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif}
   :root{
@@ -70,6 +70,7 @@
   .section-tab:hover{background:#f1f0fe}
   .section-tab.active{background:linear-gradient(135deg,#6c5ce7,#a29bfe);color:#fff;box-shadow:0 4px 12px rgba(108,92,231,.35)}
   .gtd-row,.matrix-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:12px}
+  .list-row{margin-bottom:12px}
   .gtd-row[hidden],.matrix-row[hidden]{display:none}
   .gtd-column,.quadrant{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
   .gtd-header,.q-header{padding:10px 14px;font-weight:700;color:#fff;font-size:0.9rem}
@@ -157,7 +158,7 @@
   <button type="button" class="rule135-popup-close" onclick="dismissRule135Popup()">✕</button>
 </div>
 <div class="container">
-  <h1>✏️ Edit & Stage — Smart GTD × Eisenhower</h1>
+  <h1>GTD Eisenhower 1-3-5</h1>
   <p class="subtitle">Tap any task to edit · Move between sections instantly</p>
   <p id="syncStatus" style="text-align:center;font-size:0.75rem;color:#b2bec3;margin-bottom:12px"></p>
   <p id="totalActiveCount" class="total-count"></p>
@@ -227,7 +228,7 @@
           <div class="datetime-row">
             <input type="date" id="dueDate" oninput="syncChipActive('dueDate')">
             <div class="time-input-wrap">
-              <input type="time" id="dueTime">
+              <input type="time" id="dueTime" min="08:00" max="18:00" step="300" onchange="this.value = clampDueTime(this.value)">
               <button type="button" class="time-clear-btn" onclick="clearDueTime()" title="Clear time">✕</button>
             </div>
           </div>
@@ -267,6 +268,7 @@
     <button type="button" class="section-tab" data-section="gtdRow" onclick="setActiveSection('gtdRow')">📂 GTD Workflow</button>
     <button type="button" class="section-tab" data-section="matrixRow" onclick="setActiveSection('matrixRow')">🎯 Eisenhower Matrix</button>
     <button type="button" class="section-tab" data-section="rule135Row" onclick="setActiveSection('rule135Row')">🧠 1-3-5 Rule</button>
+    <button type="button" class="section-tab" data-section="listRow" onclick="setActiveSection('listRow')">📋 List</button>
   </div>
   <div class="gtd-row" id="gtdRow">
     <div class="gtd-column gtd-inbox">
@@ -395,6 +397,19 @@
         <button type="button" class="sort-dir-btn" id="sortDir-size-small" onclick="toggleSortDir('size-small')" title="Toggle sort direction">▼</button>
       </div>
       <div class="task-list" id="size-small" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'size-small')"></div>
+    </div>
+  </div>
+
+  <div class="list-row" id="listRow" hidden>
+    <div class="gtd-column">
+      <div class="bucket-sort">
+        <select class="sort-select" id="sortField-list-all" onchange="setSort('list-all', this.value)">
+          <option value="score">Sort: Score</option>
+          <option value="due">Sort: Due Date</option>
+        </select>
+        <button type="button" class="sort-dir-btn" id="sortDir-list-all" onclick="toggleSortDir('list-all')" title="Toggle sort direction">▼</button>
+      </div>
+      <div class="task-list" id="list-all"></div>
     </div>
   </div>
 </div>
@@ -637,6 +652,17 @@ function syncChipActive(fieldId) {
 function clearDueTime() {
   document.getElementById('dueTime').value = '';
 }
+// Due time is restricted to 8am-6pm in 5-minute steps. The input's min/max/step attributes
+// hint at this in supporting browsers, but typed-in values need clamping too.
+function clampDueTime(value) {
+  if (!value) return value;
+  let [h, m] = value.split(':').map(Number);
+  m = Math.round(m / 5) * 5;
+  if (m === 60) { m = 0; h += 1; }
+  if (h < 8) { h = 8; m = 0; }
+  if (h > 18 || (h === 18 && m > 0)) { h = 18; m = 0; }
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
 
 // The reminder dropdown stores an offset in minutes before the due date/time.
 const REMINDER_OFFSETS = [0, 5, 10, 15, 30, 60];
@@ -654,7 +680,7 @@ function saveTask() {
   const checkId = editingId || String(Date.now());
   if (size && !canAssignSize(checkId, size)) { sizeCapAlert(size); return; }
   const dueDate = document.getElementById('dueDate').value;
-  const dueTime = document.getElementById('dueTime').value;
+  const dueTime = clampDueTime(document.getElementById('dueTime').value);
   const reminderOffsetValue = document.getElementById('reminderOffset').value;
   if (reminderOffsetValue !== '' && reminderOffsetValue !== 'keep' && !dueDate) {
     return alert('⚠️ Set a due date first to add a reminder.');
@@ -947,7 +973,7 @@ function toggleHideCompleted() {
 }
 
 // --- Section tabs: only one of GTD Workflow / Eisenhower Matrix / 1-3-5 Rule is shown at a time ---
-const ALL_SECTIONS = ['gtdRow', 'matrixRow', 'rule135Row'];
+const ALL_SECTIONS = ['gtdRow', 'matrixRow', 'rule135Row', 'listRow'];
 let activeSection = localStorage.getItem('activeSection') || 'gtdRow';
 if (!ALL_SECTIONS.includes(activeSection)) activeSection = 'gtdRow';
 function setActiveSection(id) {
@@ -964,7 +990,7 @@ function applyActiveSection() {
 
 // --- Per-bucket sorting (Score or Due Date, ascending or descending) ---
 let bucketSort = JSON.parse(localStorage.getItem('bucketSort') || '{}');
-const ALL_BUCKETS = ['gtd-inbox','gtd-next','gtd-wait','gtd-someday','list-q1','list-q2','list-q3','list-q4','size-big','size-medium','size-small'];
+const ALL_BUCKETS = ['gtd-inbox','gtd-next','gtd-wait','gtd-someday','list-q1','list-q2','list-q3','list-q4','size-big','size-medium','size-small','list-all'];
 function getBucketSort(bucket) {
   if (!bucketSort[bucket]) bucketSort[bucket] = { field: 'score', dir: 'desc' };
   return bucketSort[bucket];
@@ -1041,6 +1067,10 @@ function renderAll() {
     document.getElementById(`count-${bucket}`).textContent = `(${activeInSz})`;
     document.getElementById(bucket).innerHTML = filtered.length ? filtered.map(taskHTML).join('') : '<p class="empty">No tasks ✅</p>';
   });
+  {
+    const filtered = sortTasksForBucket('list-all', visible);
+    document.getElementById('list-all').innerHTML = filtered.length ? filtered.map(taskHTML).join('') : '<p class="empty">No tasks ✅</p>';
+  }
   ALL_BUCKETS.forEach(syncSortUI);
 }
 
