@@ -57,8 +57,9 @@
   .datetime-card{background:#f7f7fb;border:1px solid #ececf4;border-radius:14px;padding:14px 16px}
   .datetime-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
   .datetime-row input{flex:1;min-width:130px;background:#fff}
-  .time-input-wrap{flex:1;min-width:130px;display:flex;align-items:stretch;gap:6px}
+  .time-input-wrap{flex:1;min-width:180px;display:flex;align-items:stretch;gap:6px}
   .time-input-wrap input{flex:1;min-width:0}
+  .time-select{flex:1;min-width:0;background:#fff}
   .time-clear-btn{padding:0 12px;border-radius:10px;background:#fff;border:1px solid #e4e4ee;color:#e17055;font-weight:700}
   .time-clear-btn:hover{background:#fdf1ef}
   .btn-primary{background:linear-gradient(135deg,#6c5ce7,#a29bfe);color:#fff;margin-top:8px;border-radius:12px;padding:13px}
@@ -232,7 +233,35 @@
           <div class="datetime-row">
             <input type="date" id="dueDate" oninput="syncChipActive('dueDate')">
             <div class="time-input-wrap">
-              <input type="time" id="dueTime" min="08:00" max="18:00" step="300" onchange="this.value = clampDueTime(this.value)">
+              <select id="dueTimeHour" class="time-select" onchange="syncDueTimeFromSelects()">
+                <option value="">--</option>
+                <option value="8">8 AM</option>
+                <option value="9">9 AM</option>
+                <option value="10">10 AM</option>
+                <option value="11">11 AM</option>
+                <option value="12">12 PM</option>
+                <option value="13">1 PM</option>
+                <option value="14">2 PM</option>
+                <option value="15">3 PM</option>
+                <option value="16">4 PM</option>
+                <option value="17">5 PM</option>
+                <option value="18">6 PM</option>
+              </select>
+              <select id="dueTimeMinute" class="time-select" onchange="syncDueTimeFromSelects()">
+                <option value="0">:00</option>
+                <option value="5">:05</option>
+                <option value="10">:10</option>
+                <option value="15">:15</option>
+                <option value="20">:20</option>
+                <option value="25">:25</option>
+                <option value="30">:30</option>
+                <option value="35">:35</option>
+                <option value="40">:40</option>
+                <option value="45">:45</option>
+                <option value="50">:50</option>
+                <option value="55">:55</option>
+              </select>
+              <input type="hidden" id="dueTime">
               <button type="button" class="time-clear-btn" onclick="clearDueTime()" title="Clear time">✕</button>
             </div>
           </div>
@@ -557,7 +586,7 @@ function editTask(id) {
   document.getElementById('priority').value = task.priority;
   document.getElementById('taskSize').value = task.size || '';
   document.getElementById('dueDate').value = task.dueDate || '';
-  document.getElementById('dueTime').value = task.dueTime || '';
+  setDueTimeSelects(task.dueTime || '');
   document.getElementById('context').value = task.context || '';
   document.getElementById('notes').value = task.notes || '';
   populateReminderOffset(task);
@@ -611,7 +640,7 @@ function cancelEdit() {
   document.getElementById('taskTitle').value = '';
   document.getElementById('taskSize').value = '';
   document.getElementById('dueDate').value = '';
-  document.getElementById('dueTime').value = '';
+  setDueTimeSelects('');
   document.getElementById('context').value = '';
   document.getElementById('notes').value = '';
   const reminderSelect = document.getElementById('reminderOffset');
@@ -653,11 +682,8 @@ function syncChipActive(fieldId) {
     btn.classList.toggle('active', !!input.value && input.value === target);
   });
 }
-function clearDueTime() {
-  document.getElementById('dueTime').value = '';
-}
-// Due time is restricted to 8am-6pm in 5-minute steps. The input's min/max/step attributes
-// hint at this in supporting browsers, but typed-in values need clamping too.
+// Due time is restricted to 8am-6pm in 5-minute steps by only ever offering those values in
+// the hour/minute dropdowns, rather than relying on a native time-picker to enforce it.
 function clampDueTime(value) {
   if (!value) return value;
   let [h, m] = value.split(':').map(Number);
@@ -666,6 +692,21 @@ function clampDueTime(value) {
   if (h < 8) { h = 8; m = 0; }
   if (h > 18 || (h === 18 && m > 0)) { h = 18; m = 0; }
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+function syncDueTimeFromSelects() {
+  const h = document.getElementById('dueTimeHour').value;
+  const m = document.getElementById('dueTimeMinute').value;
+  document.getElementById('dueTime').value = h !== '' ? `${h.padStart(2, '0')}:${m.padStart(2, '0')}` : '';
+}
+function setDueTimeSelects(value) {
+  const clamped = value ? clampDueTime(value) : '';
+  const [h, m] = clamped ? clamped.split(':') : ['', '0'];
+  document.getElementById('dueTimeHour').value = clamped ? String(parseInt(h, 10)) : '';
+  document.getElementById('dueTimeMinute').value = String(parseInt(m, 10));
+  document.getElementById('dueTime').value = clamped;
+}
+function clearDueTime() {
+  setDueTimeSelects('');
 }
 
 // The reminder dropdown stores an offset in minutes before the due date/time.
