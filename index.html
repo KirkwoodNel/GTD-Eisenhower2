@@ -899,6 +899,27 @@ function handleDrop(e, targetListId) {
   }
 }
 
+// A short two-note chime on completion - synthesized so no external audio file is needed.
+let audioCtx = null;
+function playCompleteSound() {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const t0 = audioCtx.currentTime;
+    [[523.25, t0, 0.12], [783.99, t0 + 0.1, 0.18]].forEach(([freq, start, dur]) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.3, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(start);
+      osc.stop(start + dur + 0.05);
+    });
+  } catch (e) { /* Web Audio unavailable - fail silently */ }
+}
+
 function toggleComplete(id, checkboxEl) {
   const task = tasks.find(t => String(t.id) === String(id));
   if (!task) return;
@@ -909,6 +930,7 @@ function toggleComplete(id, checkboxEl) {
 
   const taskEl = checkboxEl ? checkboxEl.closest('.task') : null;
   if (becomingComplete && taskEl) {
+    playCompleteSound();
     // Give instant visual feedback (checked box, green flash) and hold for a beat before the
     // list re-renders - otherwise a completed task can vanish the instant it's checked.
     taskEl.classList.add('completed', 'just-completed');
@@ -1152,13 +1174,41 @@ function renderAll() {
   ALL_BUCKETS.forEach(syncSortUI);
 }
 
+// Tracks which reminder/due notifications have already fired (persisted so a page reload
+// within the same catch-up window doesn't fire the same notification twice). Entries older
+// than a day are pruned since they can never match a "just became due" check again.
+let notifiedKeys = JSON.parse(localStorage.getItem('notifiedKeys') || '{}');
+function markNotified(key) {
+  notifiedKeys[key] = Date.now();
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+  Object.keys(notifiedKeys).forEach(k => { if (notifiedKeys[k] < cutoff) delete notifiedKeys[k]; });
+  localStorage.setItem('notifiedKeys', JSON.stringify(notifiedKeys));
+}
+
 function checkReminders() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
   const now = new Date();
+  const CATCH_WINDOW_MS = 5 * 60000; // fire once within 5 minutes of the moment becoming due
   tasks.forEach(task => {
-    if (!task.completed && task.reminderDate) {
-      const remTime = new Date(`${task.reminderDate}T${task.reminderTime||'00:00'}`);
-      if (now >= remTime && now - remTime < 60000 && Notification.permission === 'granted') {
+    if (task.completed) return;
+    if (task.reminderDate) {
+      const remTime = new Date(`${task.reminderDate}T${task.reminderTime || '00:00'}`);
+      const key = `${task.id}:reminder:${task.reminderDate}T${task.reminderTime || ''}`;
+      if (now >= remTime && now - remTime < CATCH_WINDOW_MS && !notifiedKeys[key]) {
+        markNotified(key);
         new Notification('🔔 Reminder', { body: task.title, icon: '🔔' });
+      }
+    }
+    if (task.dueDate && task.dueTime) {
+      // Skip a separate "due" ping when the reminder is set for the exact same moment
+      // (e.g. the "At start time" offset) - one notification for that instant is enough.
+      const sameAsReminder = task.reminderDate === task.dueDate && task.reminderTime === task.dueTime;
+      if (sameAsReminder) return;
+      const dueMoment = new Date(`${task.dueDate}T${task.dueTime}`);
+      const key = `${task.id}:due:${task.dueDate}T${task.dueTime}`;
+      if (now >= dueMoment && now - dueMoment < CATCH_WINDOW_MS && !notifiedKeys[key]) {
+        markNotified(key);
+        new Notification('⏰ Task Due', { body: task.title, icon: '⏰' });
       }
     }
   });
