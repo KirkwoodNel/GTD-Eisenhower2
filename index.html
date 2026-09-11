@@ -21,10 +21,12 @@
 
   .recommend{background:linear-gradient(135deg,#fff9c4,#fff3e0);border-left:5px solid #ff9800;padding:18px;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:20px}
   .recommend h2{font-size:1.1rem;color:#e65100;margin-bottom:10px;display:flex;align-items:center;gap:8px}
-  .top-task{background:#fff;padding:12px;border-radius:10px;margin-bottom:8px;border-left:4px solid var(--score-high)}
+  .top-task{background:#fff;padding:12px;border-radius:10px;margin-bottom:8px;border-left:4px solid var(--score-high);cursor:pointer;transition:transform .15s,box-shadow .15s}
+  .top-task:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.1)}
   .score-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-weight:700;font-size:0.8rem;margin-left:8px;color:#fff}
   .score-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
-  .score-item{display:flex;align-items:center;justify-content:space-between;background:#fff;padding:8px 12px;border-radius:8px}
+  .score-item{display:flex;align-items:center;justify-content:space-between;background:#fff;padding:8px 12px;border-radius:8px;cursor:pointer;transition:transform .15s,box-shadow .15s}
+  .score-item:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.1)}
   .score-value{font-weight:700;font-size:1rem}
   .score-high{color:var(--score-high)}
   .score-med{color:var(--score-med)}
@@ -873,7 +875,7 @@ function renderRecommendations() {
   const top = scored[0];
   const scoreColor = top.score >= 60 ? 'var(--score-high)' : top.score >= 40 ? 'var(--score-med)' : 'var(--score-low)';
   panel.innerHTML = `
-    <div class="top-task">
+    <div class="top-task" onclick="editTask('${top.id}')">
       <strong style="font-size:1rem">🏆 #1 Recommended:</strong>
       <div style="font-size:1rem;margin:6px 0;font-weight:600">${top.title}
         <span class="score-badge" style="background:${scoreColor}">${top.score}/149</span>
@@ -881,15 +883,15 @@ function renderRecommendations() {
       <div style="font-size:0.8rem;color:#666">
         ${top.context?`📍 ${top.context}`:''}
         ${top.dueDate?` | 📅 Due: ${formatDateDisplay(top.dueDate)} ${top.dueTime||''}`:''}
-        <br><em>Priority: ${top.priority.toUpperCase()} · Status: ${top.gtdStatus} · <a href="#" onclick="editTask('${top.id}');return false;">Edit</a></em>
+        <br><em>Priority: ${top.priority.toUpperCase()} · Status: ${top.gtdStatus}</em>
       </div>
     </div>
     <div style="margin-top:10px">
       <strong>📊 Full Ranking:</strong>
       <div class="score-list">
         ${scored.slice(1,5).map((t,i) => `
-          <div class="score-item">
-            <span onclick="editTask('${t.id}')" style="cursor:pointer">${i+2}. ${t.title}</span>
+          <div class="score-item" onclick="editTask('${t.id}')">
+            <span>${i+2}. ${t.title}</span>
             <span class="score-value ${getScoreClass(t.score)}">${t.score}</span>
           </div>
         `).join('')}
