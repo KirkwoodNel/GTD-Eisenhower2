@@ -528,15 +528,43 @@ async function pushTasksToServer() {
   if (!resp.ok) throw new Error(`Worker PUT failed: ${resp.status}`);
 }
 
+// Safety net against duplicate tasks coming back from the sync worker - e.g. a flagged email
+// that gets pulled in twice under two different IDs because the worker's own matching missed
+// it. Two tasks linked to the same Outlook email (same "url") are treated as one; when neither
+// has a linked email, duplicate exact IDs are collapsed. Whichever copy was modified more
+// recently wins. Returns null if nothing needed removing.
+function dedupeTasks(list) {
+  const seen = new Map();
+  const result = [];
+  for (const t of list) {
+    const key = t.url ? `url:${t.url}` : `id:${t.id}`;
+    const existing = seen.get(key);
+    if (!existing) {
+      seen.set(key, t);
+      result.push(t);
+    } else {
+      const existingTime = existing.lastModified ? new Date(existing.lastModified).getTime() : 0;
+      const currentTime = t.lastModified ? new Date(t.lastModified).getTime() : 0;
+      if (currentTime > existingTime) {
+        result[result.indexOf(existing)] = t;
+        seen.set(key, t);
+      }
+    }
+  }
+  return result.length === list.length ? null : result;
+}
+
 async function initTasks() {
   const cached = localStorage.getItem('editStageTodo');
   if (cached) tasks = JSON.parse(cached); // show something instantly while we fetch
 
   try {
     const serverTasks = await fetchTasksFromServer();
-    tasks = serverTasks;
+    const deduped = dedupeTasks(serverTasks);
+    tasks = deduped || serverTasks;
     localStorage.setItem('editStageTodo', JSON.stringify(tasks));
     syncFailed = false; updateSyncStatus();
+    if (deduped) await saveTasks(); // push the cleaned-up list back so the duplicate doesn't return
   } catch (e) {
     console.warn('Could not reach sync server, using local copy only:', e);
     syncFailed = true; updateSyncStatus();
@@ -568,10 +596,12 @@ async function pollServer() {
   if (editingId !== null) return;
   try {
     const serverTasks = await fetchTasksFromServer();
-    tasks = serverTasks;
+    const deduped = dedupeTasks(serverTasks);
+    tasks = deduped || serverTasks;
     localStorage.setItem('editStageTodo', JSON.stringify(tasks));
     syncFailed = false; updateSyncStatus();
     renderAll();
+    if (deduped) await saveTasks(); // push the cleaned-up list back so the duplicate doesn't return
   } catch (e) {
     syncFailed = true; updateSyncStatus();
   }
