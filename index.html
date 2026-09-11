@@ -135,11 +135,15 @@
 
   .task-actions{display:flex;flex-direction:column;align-items:flex-end;gap:4px;margin-left:auto}
   .pill-row{display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end}
-  .pill-btn{padding:3px 9px;font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.2px;border-radius:12px;color:#fff;border:none;cursor:pointer;white-space:nowrap;line-height:1.6}
+  .pill-btn{padding:3px 9px;font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.2px;border-radius:12px;color:#fff;border:none;cursor:pointer;white-space:nowrap;line-height:1.6;min-width:88px;text-align:center;box-sizing:border-box}
   .pill-btn:hover{filter:brightness(1.08)}
   .pill-btn.pill-current{display:inline-flex;align-items:center;gap:2px}
   .pill-btn.pill-clear{background:#dfe6e9;color:#636e72}
   .delete-btn{background:none;border:none;color:#e17055;cursor:pointer;font-size:0.9rem;padding:2px;margin-left:auto}
+  .task-pills-top{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:8px}
+  .task-pills-top .pill-row{justify-content:flex-start}
+  .task-pills-top .delete-btn{margin-left:auto}
+  .task.compact .task-row{align-items:center}
   .empty{text-align:center;color:#b2bec3;padding:16px;font-style:italic;font-size:0.85rem}
   .toggle-row{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:16px}
   .toggle-row label{display:flex;align-items:center;gap:6px;font-size:0.8rem;color:#636e72;cursor:pointer;user-select:none}
@@ -966,6 +970,39 @@ function taskHTML(task) {
   `;
 }
 
+// Compact card for the List tab: pills sit in one row along the top instead of stacked to the
+// side, so each task takes a lot less vertical space and more fit on screen at once.
+function taskHTMLCompact(task) {
+  const score = calculateUrgencyScore(task);
+  const overdue = isOverdue(task);
+  return `
+    <div class="task compact ${task.priority} ${task.completed?'completed':''} ${overdue?'overdue':''}" draggable="true" ondragstart="handleDragStart(event,'${task.id}')" ondragend="handleDragEnd(event)" onclick="editTask('${task.id}')">
+      <div class="task-pills-top" onclick="event.stopPropagation()">
+        <div class="pill-row">${renderPillGroup(task.id, 'gtd', task.gtdStatus, GTD_META, null, 'moveToGTD')}</div>
+        <div class="pill-row">${renderPillGroup(task.id, 'priority', task.priority, PRIORITY_META, null, 'moveToPriority')}</div>
+        <div class="pill-row">${renderPillGroup(task.id, 'size', task.size, SIZE_META, SIZE_UNSET, 'moveToSize', 'Clear')}</div>
+        <button class="delete-btn" title="Delete" onclick="deleteTask('${task.id}')">🗑️</button>
+      </div>
+      <div class="task-row">
+        <div class="checkbox ${task.completed?'checked':''}" draggable="false" onclick="event.stopPropagation();toggleComplete('${task.id}', this)">
+          ${task.completed?'✓':''}
+        </div>
+        <div class="task-text">
+          <div class="task-title">${task.title}
+            <span style="font-size:0.65rem;opacity:0.5;margin-left:4px">${score}pts</span>
+          </div>
+          <div class="task-meta">
+            ${task.dueDate?`<span class="meta-tag">📅 ${formatDateDisplay(task.dueDate)} ${task.dueTime||''}</span>`:''}
+            ${task.context?`<span class="meta-tag">📍 ${task.context}</span>`:''}
+            ${task.url?`<a class="meta-tag" href="${task.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🔗 Email</a>`:''}
+          </div>
+          ${task.notes?`<div class="task-notes-preview">🗒️ ${truncate(task.notes, 80)}</div>`:''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function toggleHideCompleted() {
   hideCompleted = document.getElementById('hideCompletedToggle').checked;
   localStorage.setItem('hideCompleted', hideCompleted);
@@ -1069,7 +1106,7 @@ function renderAll() {
   });
   {
     const filtered = sortTasksForBucket('list-all', visible);
-    document.getElementById('list-all').innerHTML = filtered.length ? filtered.map(taskHTML).join('') : '<p class="empty">No tasks ✅</p>';
+    document.getElementById('list-all').innerHTML = filtered.length ? filtered.map(taskHTMLCompact).join('') : '<p class="empty">No tasks ✅</p>';
   }
   ALL_BUCKETS.forEach(syncSortUI);
 }
