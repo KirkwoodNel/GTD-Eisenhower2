@@ -53,23 +53,22 @@
   .quick-btn:hover{background:#e0defc}
   .quick-btn.active{background:#6c5ce7;color:#fff;box-shadow:0 2px 8px rgba(108,92,231,.35)}
   .datetime-card{background:#f7f7fb;border:1px solid #ececf4;border-radius:14px;padding:14px 16px}
-  .datetime-card-label-row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
-  .match-due-btn{padding:5px 10px;font-size:0.7rem;font-weight:600;border-radius:20px;background:#eeecfc;color:#6c5ce7;border:1px solid transparent}
-  .match-due-btn:hover{background:#e0defc}
-  .datetime-row{display:flex;gap:10px;flex-wrap:wrap}
+  .datetime-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
   .datetime-row input{flex:1;min-width:130px;background:#fff}
-  .quick-group-label{font-size:0.65rem;font-weight:700;color:#9b95e0;text-transform:uppercase;letter-spacing:.5px;margin-top:10px;display:block}
+  .time-input-wrap{flex:1;min-width:130px;display:flex;align-items:stretch;gap:6px}
+  .time-input-wrap input{flex:1;min-width:0}
+  .time-clear-btn{padding:0 12px;border-radius:10px;background:#fff;border:1px solid #e4e4ee;color:#e17055;font-weight:700}
+  .time-clear-btn:hover{background:#fdf1ef}
   .btn-primary{background:linear-gradient(135deg,#6c5ce7,#a29bfe);color:#fff;margin-top:8px;border-radius:12px;padding:13px}
   .btn-primary:hover{transform:translateY(-1px)}
   .btn-reset{background:#e0e0e0;color:#555;margin-top:8px}
 
-  .section-title{font-size:1rem;margin:0;color:#555}
-  .section-header{display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;margin:20px 0 10px;user-select:none;padding:4px;border-radius:8px}
-  .section-header:hover{background:rgba(0,0,0,.03)}
-  .section-toggle-btn{background:none;border:none;font-size:0.9rem;color:#888;padding:4px 8px;border-radius:8px;transition:transform .25s}
-  .section-toggle-btn.collapsed{transform:rotate(-90deg)}
-  .gtd-row,.matrix-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:12px;max-height:6000px;overflow:hidden;transition:max-height .3s cubic-bezier(.4,0,.2,1),opacity .25s ease,margin .3s ease}
-  .gtd-row.collapsed,.matrix-row.collapsed{max-height:0;opacity:0;margin-bottom:0}
+  .section-tabs{display:flex;gap:6px;margin:20px 0 14px;background:#fff;padding:6px;border-radius:14px;box-shadow:var(--shadow)}
+  .section-tab{flex:1;padding:10px 8px;font-size:0.8rem;font-weight:700;border-radius:10px;background:transparent;color:#888}
+  .section-tab:hover{background:#f1f0fe}
+  .section-tab.active{background:linear-gradient(135deg,#6c5ce7,#a29bfe);color:#fff;box-shadow:0 4px 12px rgba(108,92,231,.35)}
+  .gtd-row,.matrix-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:12px}
+  .gtd-row[hidden],.matrix-row[hidden]{display:none}
   .gtd-column,.quadrant{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
   .gtd-header,.q-header{padding:10px 14px;font-weight:700;color:#fff;font-size:0.9rem}
   .bucket-sort{display:flex;align-items:center;gap:6px;padding:8px 10px;background:rgba(0,0,0,.03);border-bottom:1px solid rgba(0,0,0,.05)}
@@ -217,50 +216,31 @@
         </div>
         <div class="form-group datetime-card" style="grid-column: 1 / -1">
           <label>📅 Due</label>
+          <div class="quick-row" data-for="dueDate">
+            <button type="button" class="quick-btn" data-kind="today" onclick="setQuickDateKind('dueDate','today')">☀️ Today</button>
+            <button type="button" class="quick-btn" data-kind="tomorrow" onclick="setQuickDateKind('dueDate','tomorrow')">🌅 Tomorrow</button>
+            <button type="button" class="quick-btn" data-kind="nextweek" onclick="setQuickDateKind('dueDate','nextweek')">📆 Next Week</button>
+            <button type="button" class="quick-btn" data-kind="nextmonth" onclick="setQuickDateKind('dueDate','nextmonth')">🗓️ Next Month</button>
+          </div>
           <div class="datetime-row">
             <input type="date" id="dueDate" oninput="syncChipActive('dueDate')">
-            <input type="time" id="dueTime" oninput="syncChipActive('dueTime')">
-          </div>
-          <span class="quick-group-label">Date</span>
-          <div class="quick-row" data-for="dueDate">
-            <button type="button" class="quick-btn" data-kind="today" onclick="setQuickDateKind('dueDate','today')">Today</button>
-            <button type="button" class="quick-btn" data-kind="tomorrow" onclick="setQuickDateKind('dueDate','tomorrow')">Tomorrow</button>
-            <button type="button" class="quick-btn" data-kind="weekend" onclick="setQuickDateKind('dueDate','weekend')">This Weekend</button>
-            <button type="button" class="quick-btn" data-kind="nextweek" onclick="setQuickDateKind('dueDate','nextweek')">Next Week</button>
-          </div>
-          <span class="quick-group-label">Time</span>
-          <div class="quick-row" data-for="dueTime">
-            <button type="button" class="quick-btn" data-value="09:00" onclick="setQuickTime('dueTime','09:00')">9am</button>
-            <button type="button" class="quick-btn" data-value="12:00" onclick="setQuickTime('dueTime','12:00')">12pm</button>
-            <button type="button" class="quick-btn" data-value="15:00" onclick="setQuickTime('dueTime','15:00')">3pm</button>
-            <button type="button" class="quick-btn" data-value="18:00" onclick="setQuickTime('dueTime','18:00')">6pm</button>
-            <button type="button" class="quick-btn" data-value="23:59" onclick="setQuickTime('dueTime','23:59')">End of Day</button>
+            <div class="time-input-wrap">
+              <input type="time" id="dueTime">
+              <button type="button" class="time-clear-btn" onclick="clearDueTime()" title="Clear time">✕</button>
+            </div>
           </div>
         </div>
         <div class="form-group datetime-card" style="grid-column: 1 / -1">
-          <div class="datetime-card-label-row">
-            <label>🔔 Reminder</label>
-            <button type="button" class="match-due-btn" onclick="matchReminderToDue()">= Match Due Date/Time</button>
-          </div>
-          <div class="datetime-row">
-            <input type="date" id="reminderDate" oninput="syncChipActive('reminderDate')">
-            <input type="time" id="reminderTime" oninput="syncChipActive('reminderTime')">
-          </div>
-          <span class="quick-group-label">Date</span>
-          <div class="quick-row" data-for="reminderDate">
-            <button type="button" class="quick-btn" data-kind="today" onclick="setQuickDateKind('reminderDate','today')">Today</button>
-            <button type="button" class="quick-btn" data-kind="tomorrow" onclick="setQuickDateKind('reminderDate','tomorrow')">Tomorrow</button>
-            <button type="button" class="quick-btn" data-kind="weekend" onclick="setQuickDateKind('reminderDate','weekend')">This Weekend</button>
-            <button type="button" class="quick-btn" data-kind="nextweek" onclick="setQuickDateKind('reminderDate','nextweek')">Next Week</button>
-          </div>
-          <span class="quick-group-label">Time</span>
-          <div class="quick-row" data-for="reminderTime">
-            <button type="button" class="quick-btn" data-value="08:00" onclick="setQuickTime('reminderTime','08:00')">8am</button>
-            <button type="button" class="quick-btn" data-value="10:00" onclick="setQuickTime('reminderTime','10:00')">10am</button>
-            <button type="button" class="quick-btn" data-value="12:00" onclick="setQuickTime('reminderTime','12:00')">12pm</button>
-            <button type="button" class="quick-btn" data-value="14:30" onclick="setQuickTime('reminderTime','14:30')">2:30pm</button>
-            <button type="button" class="quick-btn" data-value="16:30" onclick="setQuickTime('reminderTime','16:30')">4:30pm</button>
-          </div>
+          <label for="reminderOffset">🔔 Remind me</label>
+          <select id="reminderOffset">
+            <option value="">No reminder</option>
+            <option value="0">At start time</option>
+            <option value="5">5 minutes before</option>
+            <option value="10">10 minutes before</option>
+            <option value="15">15 minutes before</option>
+            <option value="30">30 minutes before</option>
+            <option value="60">1 hour before</option>
+          </select>
         </div>
         <div class="form-group">
           <label for="context">📍 Context</label>
@@ -281,9 +261,10 @@
     </div>
   </div>
 
-  <div class="section-header" onclick="toggleSection('gtdRow')">
-    <h3 class="section-title">📂 GTD Workflow — Stage tasks below</h3>
-    <button type="button" class="section-toggle-btn" id="gtdRowToggle" onclick="event.stopPropagation();toggleSection('gtdRow')">▾</button>
+  <div class="section-tabs">
+    <button type="button" class="section-tab" data-section="gtdRow" onclick="setActiveSection('gtdRow')">📂 GTD Workflow</button>
+    <button type="button" class="section-tab" data-section="matrixRow" onclick="setActiveSection('matrixRow')">🎯 Eisenhower Matrix</button>
+    <button type="button" class="section-tab" data-section="rule135Row" onclick="setActiveSection('rule135Row')">🧠 1-3-5 Rule</button>
   </div>
   <div class="gtd-row" id="gtdRow">
     <div class="gtd-column gtd-inbox">
@@ -332,10 +313,6 @@
     </div>
   </div>
 
-  <div class="section-header" onclick="toggleSection('matrixRow')">
-    <h3 class="section-title">🎯 Eisenhower Priority Matrix — Stage tasks below</h3>
-    <button type="button" class="section-toggle-btn" id="matrixRowToggle" onclick="event.stopPropagation();toggleSection('matrixRow')">▾</button>
-  </div>
   <div class="matrix-row" id="matrixRow">
     <div class="quadrant q1">
       <div class="q-header">DO NOW <span class="count-badge" id="count-q1"></span></div>
@@ -383,10 +360,6 @@
     </div>
   </div>
 
-  <div class="section-header" onclick="toggleSection('rule135Row')">
-    <h3 class="section-title">🧠 1-3-5 Rule — ADHD Focus Buckets</h3>
-    <button type="button" class="section-toggle-btn" id="rule135RowToggle" onclick="event.stopPropagation();toggleSection('rule135Row')">▾</button>
-  </div>
   <div class="matrix-row" id="rule135Row">
     <div class="quadrant size-big">
       <div class="q-header">1 BIG <span class="count-badge" id="count-size-big"></span></div>
@@ -564,10 +537,9 @@ function editTask(id) {
   document.getElementById('taskSize').value = task.size || '';
   document.getElementById('dueDate').value = task.dueDate || '';
   document.getElementById('dueTime').value = task.dueTime || '';
-  document.getElementById('reminderDate').value = task.reminderDate || '';
-  document.getElementById('reminderTime').value = task.reminderTime || '';
   document.getElementById('context').value = task.context || '';
   document.getElementById('notes').value = task.notes || '';
+  populateReminderOffset(task);
   if (task.url) {
     document.getElementById('linkedEmailLink').href = task.url;
     document.getElementById('linkedEmailGroup').style.display = '';
@@ -577,8 +549,31 @@ function editTask(id) {
   document.getElementById('formMode').textContent = `✏️ Editing: "${task.title}"`;
   document.getElementById('editBadge').style.display = 'inline';
   openForm();
-  ['dueDate', 'dueTime', 'reminderDate', 'reminderTime'].forEach(syncChipActive);
+  syncChipActive('dueDate');
   document.querySelector('.form-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// The reminder dropdown only offers a fixed set of offsets relative to the due date/time. A
+// reminder synced in from elsewhere (or set before this dropdown existed) might not land on
+// exactly one of those offsets - in that case we add a one-off "kept as-is" option rather than
+// silently discarding it the next time this task is saved.
+function populateReminderOffset(task) {
+  const select = document.getElementById('reminderOffset');
+  const oldKeepOption = select.querySelector('option[value="keep"]');
+  if (oldKeepOption) oldKeepOption.remove();
+
+  if (!task.reminderDate && !task.reminderTime) { select.value = ''; return; }
+  if (task.dueDate) {
+    const dueMs = new Date(`${task.dueDate}T${task.dueTime || '00:00'}:00`).getTime();
+    const remMs = new Date(`${task.reminderDate || task.dueDate}T${task.reminderTime || '00:00'}:00`).getTime();
+    const diffMin = Math.round((dueMs - remMs) / 60000);
+    if (REMINDER_OFFSETS.includes(diffMin)) { select.value = String(diffMin); return; }
+  }
+  const keepOption = document.createElement('option');
+  keepOption.value = 'keep';
+  keepOption.textContent = '🔒 Custom reminder (kept as-is)';
+  select.insertBefore(keepOption, select.firstChild);
+  select.value = 'keep';
 }
 
 function openForm() {
@@ -596,27 +591,22 @@ function cancelEdit() {
   document.getElementById('taskSize').value = '';
   document.getElementById('dueDate').value = '';
   document.getElementById('dueTime').value = '';
-  document.getElementById('reminderDate').value = '';
-  document.getElementById('reminderTime').value = '';
   document.getElementById('context').value = '';
   document.getElementById('notes').value = '';
+  const reminderSelect = document.getElementById('reminderOffset');
+  const keepOption = reminderSelect.querySelector('option[value="keep"]');
+  if (keepOption) keepOption.remove();
+  reminderSelect.value = '';
   document.getElementById('linkedEmailGroup').style.display = 'none';
   document.getElementById('formMode').textContent = '➕ Add New Task';
   document.getElementById('editBadge').style.display = 'none';
-  ['dueDate', 'dueTime', 'reminderDate', 'reminderTime'].forEach(syncChipActive);
+  syncChipActive('dueDate');
   closeForm();
 }
 
 // Quick-pick helpers for the date/time inputs above — Apple-style smart chips.
 function toISODate(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-function upcomingWeekend() {
-  const d = new Date();
-  const day = d.getDay(); // 0 Sun .. 6 Sat
-  if (day === 0 || day === 6) return d; // already the weekend
-  d.setDate(d.getDate() + (6 - day));
-  return d;
 }
 function startOfNextWeek() {
   const d = new Date();
@@ -628,15 +618,11 @@ function computeKindValue(kind) {
   const d = new Date();
   if (kind === 'today') return toISODate(d);
   if (kind === 'tomorrow') { d.setDate(d.getDate() + 1); return toISODate(d); }
-  if (kind === 'weekend') return toISODate(upcomingWeekend());
   if (kind === 'nextweek') return toISODate(startOfNextWeek());
+  if (kind === 'nextmonth') { d.setMonth(d.getMonth() + 1); return toISODate(d); }
 }
 function setQuickDateKind(fieldId, kind) {
   document.getElementById(fieldId).value = computeKindValue(kind);
-  syncChipActive(fieldId);
-}
-function setQuickTime(fieldId, value) {
-  document.getElementById(fieldId).value = value;
   syncChipActive(fieldId);
 }
 function syncChipActive(fieldId) {
@@ -646,11 +632,17 @@ function syncChipActive(fieldId) {
     btn.classList.toggle('active', !!input.value && input.value === target);
   });
 }
-function matchReminderToDue() {
-  document.getElementById('reminderDate').value = document.getElementById('dueDate').value;
-  document.getElementById('reminderTime').value = document.getElementById('dueTime').value;
-  syncChipActive('reminderDate');
-  syncChipActive('reminderTime');
+function clearDueTime() {
+  document.getElementById('dueTime').value = '';
+}
+
+// The reminder dropdown stores an offset in minutes before the due date/time.
+const REMINDER_OFFSETS = [0, 5, 10, 15, 30, 60];
+function computeReminderFromOffset(dueDate, dueTime, offsetMinutes) {
+  const base = new Date(`${dueDate}T${dueTime || '00:00'}:00`);
+  base.setMinutes(base.getMinutes() - offsetMinutes);
+  const reminderTime = `${String(base.getHours()).padStart(2, '0')}:${String(base.getMinutes()).padStart(2, '0')}`;
+  return { reminderDate: toISODate(base), reminderTime };
 }
 
 function saveTask() {
@@ -659,18 +651,35 @@ function saveTask() {
   const size = document.getElementById('taskSize').value;
   const checkId = editingId || String(Date.now());
   if (size && !canAssignSize(checkId, size)) { sizeCapAlert(size); return; }
+  const dueDate = document.getElementById('dueDate').value;
+  const dueTime = document.getElementById('dueTime').value;
+  const reminderOffsetValue = document.getElementById('reminderOffset').value;
+  if (reminderOffsetValue !== '' && reminderOffsetValue !== 'keep' && !dueDate) {
+    return alert('⚠️ Set a due date first to add a reminder.');
+  }
   const taskData = {
     title,
     gtdStatus: document.getElementById('gtdStatus').value,
     priority: document.getElementById('priority').value,
     size: size || undefined,
-    dueDate: document.getElementById('dueDate').value,
-    dueTime: document.getElementById('dueTime').value,
-    reminderDate: document.getElementById('reminderDate').value,
-    reminderTime: document.getElementById('reminderTime').value,
+    dueDate,
+    dueTime,
     context: document.getElementById('context').value.trim(),
     notes: document.getElementById('notes').value.trim()
   };
+  if (reminderOffsetValue === 'keep') {
+    // Leave the task's existing reminderDate/reminderTime/reminderOffsetMinutes untouched.
+  } else if (reminderOffsetValue === '') {
+    taskData.reminderDate = '';
+    taskData.reminderTime = '';
+    taskData.reminderOffsetMinutes = undefined;
+  } else {
+    const offset = parseInt(reminderOffsetValue, 10);
+    const computed = computeReminderFromOffset(dueDate, dueTime, offset);
+    taskData.reminderDate = computed.reminderDate;
+    taskData.reminderTime = computed.reminderTime;
+    taskData.reminderOffsetMinutes = offset;
+  }
   if (editingId) {
     const idx = tasks.findIndex(t => String(t.id) === String(editingId));
     if (idx !== -1) { tasks[idx] = { ...tasks[idx], ...taskData }; markDirty(tasks[idx]); }
@@ -935,17 +944,20 @@ function toggleHideCompleted() {
   renderAll();
 }
 
-// --- Collapsible section headers (GTD Workflow / Eisenhower Matrix) ---
-let collapsedSections = JSON.parse(localStorage.getItem('collapsedSections') || '{}');
-function toggleSection(id) {
-  collapsedSections[id] = !collapsedSections[id];
-  localStorage.setItem('collapsedSections', JSON.stringify(collapsedSections));
-  applySectionState(id);
+// --- Section tabs: only one of GTD Workflow / Eisenhower Matrix / 1-3-5 Rule is shown at a time ---
+const ALL_SECTIONS = ['gtdRow', 'matrixRow', 'rule135Row'];
+let activeSection = localStorage.getItem('activeSection') || 'gtdRow';
+if (!ALL_SECTIONS.includes(activeSection)) activeSection = 'gtdRow';
+function setActiveSection(id) {
+  activeSection = id;
+  localStorage.setItem('activeSection', id);
+  applyActiveSection();
 }
-function applySectionState(id) {
-  const collapsed = !!collapsedSections[id];
-  document.getElementById(id)?.classList.toggle('collapsed', collapsed);
-  document.getElementById(id + 'Toggle')?.classList.toggle('collapsed', collapsed);
+function applyActiveSection() {
+  ALL_SECTIONS.forEach(id => { document.getElementById(id).hidden = id !== activeSection; });
+  document.querySelectorAll('.section-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.section === activeSection);
+  });
 }
 
 // --- Per-bucket sorting (Score or Due Date, ascending or descending) ---
@@ -1044,7 +1056,7 @@ function checkReminders() {
 if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
 
 document.getElementById('hideCompletedToggle').checked = hideCompleted;
-['gtdRow','matrixRow','rule135Row'].forEach(applySectionState);
+applyActiveSection();
 initTasks().then(renderAll);
 setInterval(checkReminders, 30000);
 setInterval(pollServer, 60000);
