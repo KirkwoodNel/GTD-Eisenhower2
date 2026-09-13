@@ -1,0 +1,11 @@
+name = "gtd-todo-sync"
+main = "worker.js"
+compatibility_date = "2026-09-10"
+workers_dev = true
+
+[[kv_namespaces]]
+binding = "GTD_KV"
+id = "17cee26f2d1f4d5c984fc9904c84cf80"
+
+[triggers]
+crons = ["0 0 * * *"]
